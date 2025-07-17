@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, TrendingUp, Search, User, Play } from 'lucide-react-native';
+import { Chrome as Home, TrendingUp, Search, User, Play, MessageCircle } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -8,19 +8,19 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#1E1E1E',
-          borderTopColor: 'rgba(108, 92, 231, 0.3)',
+          borderTopColor: 'rgba(108, 92, 231, 0.2)',
           borderTopWidth: 0.5,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
-          shadowColor: '#6C5CE7',
-          shadowOffset: { width: 0, height: -1 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
           elevation: 8,
         },
         tabBarActiveTintColor: '#6C5CE7',
-        tabBarInactiveTintColor: '#666666',
+        tabBarInactiveTintColor: '#999999',
         tabBarShowLabel: false,
         tabBarIconStyle: {
           marginTop: 4,
@@ -37,7 +37,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="reels"
         options={{
-          title: 'Shorts',
           tabBarIcon: ({ size, color }) => (
             <Play size={size} color={color} strokeWidth={2} />
           ),
@@ -56,6 +55,14 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ size, color }) => (
             <Search size={size} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <MessageCircle size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
