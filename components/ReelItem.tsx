@@ -8,6 +8,7 @@ import {
   Dimensions,
   Alert,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,7 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
-import { Heart, MessageCircle, Share2, Bookmark, Music, MoveHorizontal as MoreHorizontal, Volume2, VolumeX, Play, Pause } from 'lucide-react-native';
+import { Heart, MessageCircle, Share2, Bookmark, Music, Volume2, VolumeX, Play, Pause, Clock } from 'lucide-react-native';
 import { Reel } from '../data/mockReels';
 import { useComments } from '../contexts/CommentContext';
 import CommentSystem from './CommentSystem';
@@ -60,6 +61,7 @@ export default function ReelItem({
   const [isSaved, setIsSaved] = useState(reel.isSaved);
   const [likes, setLikes] = useState(reel.likes);
   const [showComments, setShowComments] = useState(false);
+  const [showMusicInfo, setShowMusicInfo] = useState(false);
   const { getCommentCount } = useComments();
 
   // Animation values
@@ -68,8 +70,6 @@ export default function ReelItem({
   const saveScale = useSharedValue(1);
   const heartExplosion = useSharedValue(0);
   const musicRotation = useSharedValue(0);
-  const volumeSliderOpacity = useSharedValue(0);
-  const volumeSliderTranslateY = useSharedValue(50);
   const playButtonOpacity = useSharedValue(0);
 
   useEffect(() => {
@@ -77,11 +77,13 @@ export default function ReelItem({
       setIsPlaying(true);
       videoRef.current?.playAsync();
       // Start music rotation animation
-      musicRotation.value = withRepeat(
-        withTiming(360, { duration: 3000 }),
-        -1,
-        false
-      );
+      if (reel.musicInfo) {
+        musicRotation.value = withRepeat(
+          withTiming(360, { duration: 3000 }),
+          -1,
+          false
+        );
+      }
     } else {
       setIsPlaying(false);
       videoRef.current?.pauseAsync();
@@ -113,7 +115,7 @@ export default function ReelItem({
     setLikes(isLiked ? likes - 1 : likes + 1);
     
     likeScale.value = withSequence(
-      withSpring(1.2, { damping: 8, stiffness: 200 }),
+      withSpring(1.3, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 8, stiffness: 200 })
     );
     
@@ -139,7 +141,7 @@ export default function ReelItem({
     
     setIsSaved(!isSaved);
     saveScale.value = withSequence(
-      withSpring(1.2, { damping: 8, stiffness: 200 }),
+      withSpring(1.3, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 8, stiffness: 200 })
     );
     
@@ -171,14 +173,9 @@ export default function ReelItem({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const showVolumeSlider = () => {
-    volumeSliderOpacity.value = withTiming(1, { duration: 200 });
-    volumeSliderTranslateY.value = withTiming(0, { duration: 200 });
-    
-    setTimeout(() => {
-      volumeSliderOpacity.value = withTiming(0, { duration: 200 });
-      volumeSliderTranslateY.value = withTiming(50, { duration: 200 });
-    }, 2000);
+  const handleMusicPress = () => {
+    setShowMusicInfo(true);
+    setTimeout(() => setShowMusicInfo(false), 3000);
   };
 
   // Double tap gesture
@@ -210,17 +207,12 @@ export default function ReelItem({
   const heartExplosionStyle = useAnimatedStyle(() => ({
     opacity: heartExplosion.value,
     transform: [
-      { scale: interpolate(heartExplosion.value, [0, 1], [0.5, 2]) },
+      { scale: interpolate(heartExplosion.value, [0, 1], [0.5, 2.5]) },
     ],
   }));
 
   const musicRotationStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${musicRotation.value}deg` }],
-  }));
-
-  const volumeSliderStyle = useAnimatedStyle(() => ({
-    opacity: volumeSliderOpacity.value,
-    transform: [{ translateY: volumeSliderTranslateY.value }],
   }));
 
   const playButtonStyle = useAnimatedStyle(() => ({
@@ -271,13 +263,13 @@ export default function ReelItem({
             {/* Play button overlay */}
             <Animated.View style={[styles.playButtonOverlay, playButtonStyle]}>
               <View style={styles.playButton}>
-                <Play size={32} color="#FFFFFF" fill="#FFFFFF" />
+                <Play size={32} color="#EAEAEA" fill="#EAEAEA" />
               </View>
             </Animated.View>
             
             {/* Heart explosion */}
             <Animated.View style={[styles.heartExplosion, heartExplosionStyle]}>
-              <Heart size={80} color="#ff6b9d" fill="#ff6b9d" />
+              <Heart size={80} color="#E74C3C" fill="#E74C3C" />
             </Animated.View>
           </View>
         </GestureDetector>
@@ -287,37 +279,22 @@ export default function ReelItem({
           <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
         </View>
 
-        {/* Top overlay */}
+        {/* Top overlay - Sound toggle */}
         <View style={styles.topOverlay}>
-          <TouchableOpacity style={styles.userInfo} onPress={handleUserPress}>
-            <Image source={{ uri: reel.user.avatar }} style={styles.avatar} />
-            <View style={styles.userDetails}>
-              <Text style={styles.username}>{reel.user.username}</Text>
-              <Text style={styles.timestamp}>{reel.timestamp}</Text>
-            </View>
+          <TouchableOpacity style={styles.volumeButton} onPress={handleVolumeToggle}>
+            {isMuted ? (
+              <VolumeX size={24} color="#EAEAEA" />
+            ) : (
+              <Volume2 size={24} color="#EAEAEA" />
+            )}
           </TouchableOpacity>
-          
-          <View style={styles.topActions}>
-            <TouchableOpacity style={styles.volumeButton} onPress={handleVolumeToggle}>
-              {isMuted ? (
-                <VolumeX size={24} color="#FFFFFF" />
-              ) : (
-                <Volume2 size={24} color="#FFFFFF" />
-              )}
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.moreButton}>
-              <MoreHorizontal size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
         </View>
 
-        {/* Volume slider */}
-        <Animated.View style={[styles.volumeSlider, volumeSliderStyle]}>
-          <View style={styles.volumeTrack}>
-            <View style={[styles.volumeFill, { height: '70%' }]} />
-          </View>
-        </Animated.View>
+        {/* Duration badge */}
+        <View style={styles.durationBadge}>
+          <Clock size={12} color="#EAEAEA" />
+          <Text style={styles.durationText}>{reel.duration}</Text>
+        </View>
 
         {/* Right side actions */}
         <View style={styles.rightActions}>
@@ -325,11 +302,14 @@ export default function ReelItem({
             style={[styles.actionButton, likeAnimatedStyle]}
             onPress={handleLike}
           >
-            <Heart
-              size={28}
-              color={isLiked ? '#ff6b9d' : '#FFFFFF'}
-              fill={isLiked ? '#ff6b9d' : 'transparent'}
-            />
+            <View style={styles.actionIconContainer}>
+              <Heart
+                size={32}
+                color={isLiked ? '#E74C3C' : '#EAEAEA'}
+                fill={isLiked ? '#E74C3C' : 'transparent'}
+                strokeWidth={1.5}
+              />
+            </View>
             <Text style={styles.actionText}>{formatNumber(likes)}</Text>
           </AnimatedTouchableOpacity>
 
@@ -337,7 +317,9 @@ export default function ReelItem({
             style={styles.actionButton}
             onPress={handleCommentPress}
           >
-            <MessageCircle size={28} color="#FFFFFF" />
+            <View style={styles.actionIconContainer}>
+              <MessageCircle size={32} color="#EAEAEA" strokeWidth={1.5} />
+            </View>
             <Text style={styles.actionText}>{formatNumber(commentCount)}</Text>
           </TouchableOpacity>
 
@@ -345,7 +327,9 @@ export default function ReelItem({
             style={styles.actionButton}
             onPress={() => onShare(reel.id)}
           >
-            <Share2 size={28} color="#FFFFFF" />
+            <View style={styles.actionIconContainer}>
+              <Share2 size={32} color="#EAEAEA" strokeWidth={1.5} />
+            </View>
             <Text style={styles.actionText}>{formatNumber(reel.shares)}</Text>
           </TouchableOpacity>
 
@@ -353,51 +337,74 @@ export default function ReelItem({
             style={[styles.actionButton, saveAnimatedStyle]}
             onPress={handleSave}
           >
-            <Bookmark
-              size={28}
-              color={isSaved ? '#9B61E5' : '#FFFFFF'}
-              fill={isSaved ? '#9B61E5' : 'transparent'}
-            />
+            <View style={styles.actionIconContainer}>
+              <Bookmark
+                size={32}
+                color={isSaved ? '#6C5CE7' : '#EAEAEA'}
+                fill={isSaved ? '#6C5CE7' : 'transparent'}
+                strokeWidth={1.5}
+              />
+            </View>
           </AnimatedTouchableOpacity>
 
           {/* Music info */}
           {reel.musicInfo && (
-            <TouchableOpacity style={styles.musicButton}>
+            <TouchableOpacity style={styles.musicButton} onPress={handleMusicPress}>
               <Animated.View style={[styles.musicIcon, musicRotationStyle]}>
-                <Music size={24} color="#FFFFFF" />
+                <Music size={20} color="#EAEAEA" />
               </Animated.View>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Bottom overlay */}
+        {/* Bottom overlay - User info and caption */}
         <View style={styles.bottomOverlay}>
-          <View style={styles.captionContainer}>
-            <Text style={styles.caption}>
-              <Text style={styles.captionUsername}>{reel.user.username}</Text>
-              {' '}
-              {reel.caption}
-            </Text>
-            
-            {/* Hashtags */}
-            <View style={styles.hashtagContainer}>
-              {reel.hashtags.map((hashtag, index) => (
-                <TouchableOpacity key={index} style={styles.hashtag}>
-                  <Text style={styles.hashtagText}>{hashtag}</Text>
-                </TouchableOpacity>
-              ))}
+          <LinearGradient
+            colors={['transparent', 'rgba(30, 30, 30, 0.8)', 'rgba(30, 30, 30, 0.95)']}
+            style={styles.bottomGradient}
+          >
+            {/* User info */}
+            <View style={styles.userInfoContainer}>
+              <TouchableOpacity onPress={handleUserPress} style={styles.userInfo}>
+                <Image source={{ uri: reel.user.avatar }} style={styles.avatar} />
+                <View style={styles.userDetails}>
+                  <Text style={styles.username}>{reel.user.username}</Text>
+                  <Text style={styles.timestamp}>{reel.timestamp}</Text>
+                </View>
+              </TouchableOpacity>
             </View>
-          </View>
 
-          {/* Music info */}
-          {reel.musicInfo && (
-            <View style={styles.musicInfo}>
-              <Music size={16} color="#FFFFFF" />
-              <Text style={styles.musicText} numberOfLines={1}>
-                {reel.musicInfo.title} • {reel.musicInfo.artist}
+            {/* Caption */}
+            <View style={styles.captionContainer}>
+              <Text style={styles.caption} numberOfLines={3}>
+                {reel.caption}
               </Text>
+              
+              {/* Hashtags */}
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.hashtagScroll}
+                contentContainerStyle={styles.hashtagContainer}
+              >
+                {reel.hashtags.map((hashtag, index) => (
+                  <TouchableOpacity key={index} style={styles.hashtag}>
+                    <Text style={styles.hashtagText}>{hashtag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-          )}
+
+            {/* Music info overlay */}
+            {showMusicInfo && reel.musicInfo && (
+              <View style={styles.musicInfoOverlay}>
+                <Music size={16} color="#EAEAEA" />
+                <Text style={styles.musicText} numberOfLines={1}>
+                  {reel.musicInfo.title} • {reel.musicInfo.artist}
+                </Text>
+              </View>
+            )}
+          </LinearGradient>
         </View>
       </View>
       
@@ -416,7 +423,7 @@ const styles = StyleSheet.create({
   container: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-    backgroundColor: '#000000',
+    backgroundColor: '#1E1E1E',
     position: 'relative',
   },
   videoContainer: {
@@ -435,16 +442,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(30, 30, 30, 0.5)',
   },
   loadingSpinner: {
     width: 40,
     height: 40,
     borderRadius: 20,
     borderWidth: 3,
-    borderColor: '#9B61E5',
+    borderColor: '#6C5CE7',
     borderTopColor: 'transparent',
-    // Add rotation animation here if needed
   },
   playButtonOverlay: {
     position: 'absolute',
@@ -459,9 +465,14 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(30, 30, 30, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   heartExplosion: {
     position: 'absolute',
@@ -471,181 +482,213 @@ const styles = StyleSheet.create({
     marginLeft: -40,
     justifyContent: 'center',
     alignItems: 'center',
+    pointerEvents: 'none',
   },
   progressContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    height: 2,
+    backgroundColor: 'rgba(234, 234, 234, 0.3)',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#9B61E5',
+    backgroundColor: '#6C5CE7',
   },
   topOverlay: {
     position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#9B61E5',
-  },
-  userDetails: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    opacity: 0.7,
-  },
-  topActions: {
+    top: 60,
+    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
   volumeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(30, 30, 30, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  moreButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+  durationBadge: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(30, 30, 30, 0.8)',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  volumeSlider: {
-    position: 'absolute',
-    right: 80,
-    top: 100,
-    width: 30,
-    height: 120,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 15,
-    padding: 5,
-  },
-  volumeTrack: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 10,
-    position: 'relative',
-  },
-  volumeFill: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#9B61E5',
-    borderRadius: 10,
+  durationText: {
+    color: '#EAEAEA',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   rightActions: {
     position: 'absolute',
-    right: 16,
-    bottom: 150,
+    right: 20,
+    bottom: 200,
     alignItems: 'center',
     gap: 24,
   },
   actionButton: {
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(30, 30, 30, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
   actionText: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: '#EAEAEA',
     fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   musicButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 12,
   },
   musicIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#9B61E5',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(108, 92, 231, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
   },
   bottomOverlay: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 0,
     left: 0,
-    right: 80,
-    paddingHorizontal: 16,
+    right: 0,
+    height: 200,
+  },
+  bottomGradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 100,
+    paddingHorizontal: 20,
+  },
+  userInfoContainer: {
+    marginBottom: 16,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#6C5CE7',
+  },
+  userDetails: {
+    flex: 1,
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#EAEAEA',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   captionContainer: {
-    marginBottom: 12,
+    maxWidth: '75%',
   },
   caption: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#EAEAEA',
     lineHeight: 20,
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  captionUsername: {
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+  hashtagScroll: {
+    marginTop: 4,
   },
   hashtagContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
     gap: 8,
+    paddingRight: 20,
   },
   hashtag: {
-    backgroundColor: 'rgba(155, 97, 229, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: 'rgba(108, 92, 231, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(108, 92, 231, 0.4)',
   },
   hashtagText: {
     fontSize: 12,
-    color: '#9B61E5',
+    color: '#6C5CE7',
     fontWeight: '600',
   },
-  musicInfo: {
+  musicInfoOverlay: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(30, 30, 30, 0.8)',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    maxWidth: '80%',
+    maxWidth: 200,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   musicText: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: '#EAEAEA',
     marginLeft: 8,
     flex: 1,
+    fontWeight: '500',
   },
 });

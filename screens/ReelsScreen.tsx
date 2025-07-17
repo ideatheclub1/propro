@@ -109,16 +109,16 @@ export default function ReelsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <LinearGradient
-        colors={['rgba(155, 97, 229, 0.1)', 'rgba(155, 97, 229, 0.05)']}
+        colors={['rgba(108, 92, 231, 0.1)', 'rgba(108, 92, 231, 0.05)']}
         style={styles.emptyGradient}
       >
-        <Play size={64} color="#9B61E5" />
+        <Play size={64} color="#6C5CE7" />
         <Text style={styles.emptyTitle}>No Reels Available</Text>
         <Text style={styles.emptySubtitle}>
           Be the first to create a reel and share your story!
         </Text>
         <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-          <RefreshCw size={20} color="#9B61E5" />
+          <RefreshCw size={20} color="#6C5CE7" />
           <Text style={styles.refreshButtonText}>Refresh</Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -128,15 +128,15 @@ export default function ReelsScreen() {
   if (reels.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar style="light" backgroundColor="#000000" />
+        <StatusBar style="light" backgroundColor="#1E1E1E" />
         {renderEmptyState()}
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" backgroundColor="#000000" />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar style="light" backgroundColor="#1E1E1E" />
       
       <FlatList
         ref={flatListRef}
@@ -154,8 +154,8 @@ export default function ReelsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#9B61E5"
-            progressBackgroundColor="#000000"
+            tintColor="#6C5CE7"
+            progressBackgroundColor="#1E1E1E"
           />
         }
         getItemLayout={(data, index) => ({
@@ -176,7 +176,7 @@ export default function ReelsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#1E1E1E',
   },
   flatList: {
     flex: 1,
@@ -193,18 +193,18 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(155, 97, 229, 0.3)',
+    borderColor: 'rgba(108, 92, 231, 0.3)',
   },
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#EAEAEA',
     marginTop: 20,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#A0A0A0',
+    color: '#999999',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
@@ -212,84 +212,17 @@ const styles = StyleSheet.create({
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(155, 97, 229, 0.2)',
+    backgroundColor: 'rgba(108, 92, 231, 0.2)',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: '#9B61E5',
+    borderColor: '#6C5CE7',
   },
   refreshButtonText: {
     fontSize: 16,
-    color: '#9B61E5',
+    color: '#6C5CE7',
     fontWeight: '600',
     marginLeft: 8,
-  },
-  header: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    zIndex: 100,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  userAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-  },
-  userDetails: {
-    flex: 1,
-  },
-  userHandle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#F5F5F5',
-  },
-  userTimestamp: {
-    fontSize: 12,
-    color: '#B0B0B0',
-  },
-  muteButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 20,
-    padding: 8,
-  },
-  bottomOverlay: {
-    position: 'absolute',
-    bottom: 80,
-    left: 0,
-    right: 80,
-    paddingHorizontal: 16,
-  },
-  hashtagContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-    gap: 8,
-  },
-  hashtag: {
-    backgroundColor: 'rgba(122, 79, 226, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  hashtagText: {
-    fontSize: 12,
-    color: '#7A4FE2',
-    fontWeight: '600',
   },
 });
