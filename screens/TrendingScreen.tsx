@@ -29,7 +29,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Flame, Filter, Heart, X, Play, Eye, Clock } from 'lucide-react-native';
+import { Flame, ListFilter as Filter, Heart, X, Play, Eye, Clock } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
