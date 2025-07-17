@@ -25,7 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
-import { Heart, MessageCircle, Share2, Bookmark, Music, Volume2, VolumeX, Play, Pause, Clock } from 'lucide-react-native';
+import { Heart, MessageCircle, Share2, Bookmark, Music, Volume2, VolumeX, Play, Pause } from 'lucide-react-native';
 import { Reel } from '../data/mockReels';
 import { useComments } from '../contexts/CommentContext';
 import CommentSystem from './CommentSystem';
@@ -56,7 +56,6 @@ export default function ReelItem({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(reel.isLiked);
   const [isSaved, setIsSaved] = useState(reel.isSaved);
   const [likes, setLikes] = useState(reel.likes);
@@ -68,20 +67,32 @@ export default function ReelItem({
   const likeScale = useSharedValue(1);
   const likeOpacity = useSharedValue(isLiked ? 1 : 0.8);
   const saveScale = useSharedValue(1);
+  const commentScale = useSharedValue(1);
+  const shareScale = useSharedValue(1);
   const heartExplosion = useSharedValue(0);
   const musicRotation = useSharedValue(0);
   const playButtonOpacity = useSharedValue(0);
+  const musicPulse = useSharedValue(0);
 
   useEffect(() => {
     if (isActive) {
       setIsPlaying(true);
       videoRef.current?.playAsync();
-      // Start music rotation animation
+      
+      // Start music rotation and pulse animation
       if (reel.musicInfo) {
         musicRotation.value = withRepeat(
-          withTiming(360, { duration: 3000 }),
+          withTiming(360, { duration: 4000 }),
           -1,
           false
+        );
+        musicPulse.value = withRepeat(
+          withSequence(
+            withTiming(1.1, { duration: 800 }),
+            withTiming(1, { duration: 800 })
+          ),
+          -1,
+          true
         );
       }
     } else {
@@ -149,7 +160,21 @@ export default function ReelItem({
   };
 
   const handleCommentPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    commentScale.value = withSequence(
+      withSpring(1.2, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 8, stiffness: 200 })
+    );
     setShowComments(true);
+  };
+
+  const handleSharePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    shareScale.value = withSequence(
+      withSpring(1.2, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 8, stiffness: 200 })
+    );
+    onShare(reel.id);
   };
 
   const handleCloseComments = () => {
@@ -204,6 +229,14 @@ export default function ReelItem({
     transform: [{ scale: saveScale.value }],
   }));
 
+  const commentAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: commentScale.value }],
+  }));
+
+  const shareAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: shareScale.value }],
+  }));
+
   const heartExplosionStyle = useAnimatedStyle(() => ({
     opacity: heartExplosion.value,
     transform: [
@@ -212,7 +245,10 @@ export default function ReelItem({
   }));
 
   const musicRotationStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${musicRotation.value}deg` }],
+    transform: [
+      { rotate: `${musicRotation.value}deg` },
+      { scale: musicPulse.value }
+    ],
   }));
 
   const playButtonStyle = useAnimatedStyle(() => ({
@@ -246,9 +282,6 @@ export default function ReelItem({
               onPlaybackStatusUpdate={(status) => {
                 if (status.isLoaded) {
                   setIsLoading(false);
-                  if (status.durationMillis) {
-                    setProgress(status.positionMillis! / status.durationMillis);
-                  }
                 }
               }}
             />
@@ -263,7 +296,7 @@ export default function ReelItem({
             {/* Play button overlay */}
             <Animated.View style={[styles.playButtonOverlay, playButtonStyle]}>
               <View style={styles.playButton}>
-                <Play size={32} color="#EAEAEA" fill="#EAEAEA" />
+                <Play size={32} color="#FFFFFF" fill="#FFFFFF" />
               </View>
             </Animated.View>
             
@@ -274,26 +307,15 @@ export default function ReelItem({
           </View>
         </GestureDetector>
 
-        {/* Progress bar */}
-        <View style={styles.progressContainer}>
-          <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
-        </View>
-
-        {/* Top overlay - Sound toggle */}
+        {/* Top overlay - Volume toggle only */}
         <View style={styles.topOverlay}>
           <TouchableOpacity style={styles.volumeButton} onPress={handleVolumeToggle}>
             {isMuted ? (
-              <VolumeX size={24} color="#EAEAEA" />
+              <VolumeX size={24} color="#FFFFFF" />
             ) : (
-              <Volume2 size={24} color="#EAEAEA" />
+              <Volume2 size={24} color="#FFFFFF" />
             )}
           </TouchableOpacity>
-        </View>
-
-        {/* Duration badge */}
-        <View style={styles.durationBadge}>
-          <Clock size={12} color="#EAEAEA" />
-          <Text style={styles.durationText}>{reel.duration}</Text>
         </View>
 
         {/* Right side actions */}
@@ -305,33 +327,33 @@ export default function ReelItem({
             <View style={styles.actionIconContainer}>
               <Heart
                 size={32}
-                color={isLiked ? '#E74C3C' : '#EAEAEA'}
+                color={isLiked ? '#E74C3C' : '#FFFFFF'}
                 fill={isLiked ? '#E74C3C' : 'transparent'}
-                strokeWidth={1.5}
+                strokeWidth={2}
               />
             </View>
             <Text style={styles.actionText}>{formatNumber(likes)}</Text>
           </AnimatedTouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
+          <AnimatedTouchableOpacity
+            style={[styles.actionButton, commentAnimatedStyle]}
             onPress={handleCommentPress}
           >
             <View style={styles.actionIconContainer}>
-              <MessageCircle size={32} color="#EAEAEA" strokeWidth={1.5} />
+              <MessageCircle size={32} color="#FFFFFF" strokeWidth={2} />
             </View>
             <Text style={styles.actionText}>{formatNumber(commentCount)}</Text>
-          </TouchableOpacity>
+          </AnimatedTouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onShare(reel.id)}
+          <AnimatedTouchableOpacity
+            style={[styles.actionButton, shareAnimatedStyle]}
+            onPress={handleSharePress}
           >
             <View style={styles.actionIconContainer}>
-              <Share2 size={32} color="#EAEAEA" strokeWidth={1.5} />
+              <Share2 size={32} color="#FFFFFF" strokeWidth={2} />
             </View>
             <Text style={styles.actionText}>{formatNumber(reel.shares)}</Text>
-          </TouchableOpacity>
+          </AnimatedTouchableOpacity>
 
           <AnimatedTouchableOpacity
             style={[styles.actionButton, saveAnimatedStyle]}
@@ -340,41 +362,43 @@ export default function ReelItem({
             <View style={styles.actionIconContainer}>
               <Bookmark
                 size={32}
-                color={isSaved ? '#6C5CE7' : '#EAEAEA'}
+                color={isSaved ? '#6C5CE7' : '#FFFFFF'}
                 fill={isSaved ? '#6C5CE7' : 'transparent'}
-                strokeWidth={1.5}
+                strokeWidth={2}
               />
             </View>
           </AnimatedTouchableOpacity>
+        </View>
 
-          {/* Music info */}
-          {reel.musicInfo && (
-            <TouchableOpacity style={styles.musicButton} onPress={handleMusicPress}>
-              <Animated.View style={[styles.musicIcon, musicRotationStyle]}>
-                <Music size={20} color="#EAEAEA" />
+        {/* Music info - Bottom right */}
+        {reel.musicInfo && (
+          <View style={styles.musicContainer}>
+            <TouchableOpacity onPress={handleMusicPress}>
+              <Animated.View style={[styles.musicButton, musicRotationStyle]}>
+                <Music size={24} color="#FFFFFF" />
               </Animated.View>
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Bottom overlay - User info and caption */}
         <View style={styles.bottomOverlay}>
           <LinearGradient
-            colors={['transparent', 'rgba(30, 30, 30, 0.8)', 'rgba(30, 30, 30, 0.95)']}
+            colors={['transparent', 'rgba(30, 30, 30, 0.6)', 'rgba(30, 30, 30, 0.9)']}
             style={styles.bottomGradient}
           >
-            {/* User info */}
+            {/* User info - Bottom left */}
             <View style={styles.userInfoContainer}>
               <TouchableOpacity onPress={handleUserPress} style={styles.userInfo}>
                 <Image source={{ uri: reel.user.avatar }} style={styles.avatar} />
                 <View style={styles.userDetails}>
-                  <Text style={styles.username}>{reel.user.username}</Text>
+                  <Text style={styles.username}>@{reel.user.username}</Text>
                   <Text style={styles.timestamp}>{reel.timestamp}</Text>
                 </View>
               </TouchableOpacity>
             </View>
 
-            {/* Caption */}
+            {/* Caption and hashtags */}
             <View style={styles.captionContainer}>
               <Text style={styles.caption} numberOfLines={3}>
                 {reel.caption}
@@ -398,7 +422,7 @@ export default function ReelItem({
             {/* Music info overlay */}
             {showMusicInfo && reel.musicInfo && (
               <View style={styles.musicInfoOverlay}>
-                <Music size={16} color="#EAEAEA" />
+                <Music size={16} color="#FFFFFF" />
                 <Text style={styles.musicText} numberOfLines={1}>
                   {reel.musicInfo.title} • {reel.musicInfo.artist}
                 </Text>
@@ -465,7 +489,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(30, 30, 30, 0.7)',
+    backgroundColor: 'rgba(30, 30, 30, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000000',
@@ -484,25 +508,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     pointerEvents: 'none',
   },
-  progressContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: 'rgba(234, 234, 234, 0.3)',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#6C5CE7',
-  },
   topOverlay: {
     position: 'absolute',
     top: 60,
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
   },
   volumeButton: {
     width: 44,
@@ -517,38 +528,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  durationBadge: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(30, 30, 30, 0.8)',
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  durationText: {
-    color: '#EAEAEA',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
   rightActions: {
     position: 'absolute',
     right: 20,
-    bottom: 200,
+    bottom: 180,
     alignItems: 'center',
-    gap: 24,
+    gap: 20,
   },
   actionButton: {
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   actionIconContainer: {
     width: 48,
@@ -565,27 +554,29 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 12,
-    color: '#EAEAEA',
+    color: '#FFFFFF',
     fontWeight: '600',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  musicButton: {
-    marginTop: 12,
+  musicContainer: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
   },
-  musicIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(108, 92, 231, 0.8)',
+  musicButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#6C5CE7',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#6C5CE7',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowRadius: 8,
+    elevation: 8,
   },
   bottomOverlay: {
     position: 'absolute',
@@ -621,7 +612,7 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#EAEAEA',
+    color: '#FFFFFF',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -639,7 +630,7 @@ const styles = StyleSheet.create({
   },
   caption: {
     fontSize: 14,
-    color: '#EAEAEA',
+    color: '#FFFFFF',
     lineHeight: 20,
     marginBottom: 12,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
@@ -655,29 +646,27 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   hashtag: {
-    backgroundColor: 'rgba(108, 92, 231, 0.25)',
+    backgroundColor: '#6C5CE7',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(108, 92, 231, 0.4)',
   },
   hashtagText: {
     fontSize: 12,
-    color: '#6C5CE7',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   musicInfoOverlay: {
     position: 'absolute',
-    bottom: 120,
-    right: 20,
+    bottom: 140,
+    left: 20,
+    right: 80,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(30, 30, 30, 0.8)',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    maxWidth: 200,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -686,7 +675,7 @@ const styles = StyleSheet.create({
   },
   musicText: {
     fontSize: 12,
-    color: '#EAEAEA',
+    color: '#FFFFFF',
     marginLeft: 8,
     flex: 1,
     fontWeight: '500',

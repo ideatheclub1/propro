@@ -7,19 +7,19 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#000000',
-          borderTopColor: 'rgba(155, 97, 229, 0.3)',
+          backgroundColor: '#1E1E1E',
+          borderTopColor: 'rgba(108, 92, 231, 0.3)',
           borderTopWidth: 0.5,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
-          shadowColor: '#9B61E5',
+          shadowColor: '#6C5CE7',
           shadowOffset: { width: 0, height: -1 },
           shadowOpacity: 0.2,
           shadowRadius: 8,
           elevation: 8,
         },
-        tabBarActiveTintColor: '#9B61E5',
+        tabBarActiveTintColor: '#6C5CE7',
         tabBarInactiveTintColor: '#666666',
         tabBarShowLabel: false,
         tabBarIconStyle: {
@@ -37,7 +37,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="reels"
         options={{
-          title: 'Reels',
+          title: 'Shorts',
           tabBarIcon: ({ size, color }) => (
             <Play size={size} color={color} strokeWidth={2} />
           ),
