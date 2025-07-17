@@ -6,81 +6,98 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withRepeat,
+  withSequence,
   withTiming,
   interpolate,
 } from 'react-native-reanimated';
-import { Heart, MessageCircle, Share2, MoveHorizontal as MoreHorizontal, TrendingUp } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { Heart, MessageCircle, Share2, TrendingUp } from 'lucide-react-native';
 import { Post } from '../types';
 import { useComments } from '../contexts/CommentContext';
-import CommentSystem from './CommentSystem';
 
 interface PostCardProps {
   post: Post;
   onLike: (postId: string) => void;
   onComment: (postId: string) => void;
+  onShare?: (postId: string) => void;
 }
 
 const { width } = Dimensions.get('window');
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
-export default function PostCard({ post, onLike, onComment }: PostCardProps) {
+export default function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
   const router = useRouter();
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [likes, setLikes] = useState(post.likes);
-  const [showComments, setShowComments] = useState(false);
   const { getCommentCount } = useComments();
   
   const likeScale = useSharedValue(1);
+  const heartExplosion = useSharedValue(0);
+  const commentScale = useSharedValue(1);
+  const shareScale = useSharedValue(1);
   const trendingGlow = useSharedValue(0);
+  const cardScale = useSharedValue(1);
 
   React.useEffect(() => {
     if (post.isTrending) {
-      trendingGlow.value = withRepeat(
-        withTiming(1, { duration: 2000 }),
-        -1,
-        true
-      );
+      trendingGlow.value = withTiming(1, { duration: 2000 }, () => {
+        trendingGlow.value = withTiming(0, { duration: 2000 });
+      });
     }
   }, [post.isTrending]);
 
   const handleLike = () => {
-    likeScale.value = withSpring(1.2, {}, () => {
-      likeScale.value = withSpring(1);
-    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     
     setIsLiked(!isLiked);
     setLikes(isLiked ? likes - 1 : likes + 1);
+    
+    // Heart animation
+    likeScale.value = withSequence(
+      withSpring(1.3, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 8, stiffness: 200 })
+    );
+    
+    // Heart explosion for new likes
+    if (!isLiked) {
+      heartExplosion.value = withSequence(
+        withTiming(1, { duration: 300 }),
+        withTiming(0, { duration: 500 })
+      );
+    }
+    
     onLike(post.id);
   };
 
-  const handleCommentPress = () => {
-    setShowComments(true);
+  const handleComment = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    commentScale.value = withSequence(
+      withSpring(1.2, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 8, stiffness: 200 })
+    );
+    onComment(post.id);
   };
 
-  const handleCloseComments = () => {
-    setShowComments(false);
+  const handleShare = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    shareScale.value = withSequence(
+      withSpring(1.2, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 8, stiffness: 200 })
+    );
+    onShare?.(post.id);
   };
 
   const handleUserPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (post.user.id === '1') {
-      Alert.alert(
-        'Your Profile',
-        'You are viewing your own profile. To make changes, go to your settings.',
-        [
-          { text: 'OK', style: 'cancel' },
-          { 
-            text: 'Go to Profile', 
-            onPress: () => router.push('/(tabs)/profile')
-          }
-        ]
-      );
+      router.push('/(tabs)/profile');
       return;
     }
     router.push({
@@ -89,231 +106,328 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
     });
   };
 
-  const likeAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: likeScale.value }],
-    };
-  });
+  const handleImagePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    cardScale.value = withSequence(
+      withSpring(0.98, { damping: 15, stiffness: 200 }),
+      withSpring(1, { damping: 15, stiffness: 200 })
+    );
+  };
 
-  const trendingAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      shadowOpacity: interpolate(trendingGlow.value, [0, 1], [0.3, 0.7]),
-      shadowRadius: interpolate(trendingGlow.value, [0, 1], [6, 15]),
-    };
-  });
+  // Animated styles
+  const likeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: likeScale.value }],
+  }));
+
+  const commentAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: commentScale.value }],
+  }));
+
+  const shareAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: shareScale.value }],
+  }));
+
+  const heartExplosionStyle = useAnimatedStyle(() => ({
+    opacity: heartExplosion.value,
+    transform: [
+      { scale: interpolate(heartExplosion.value, [0, 1], [0.5, 2.5]) },
+    ],
+  }));
+
+  const trendingAnimatedStyle = useAnimatedStyle(() => ({
+    shadowOpacity: interpolate(trendingGlow.value, [0, 1], [0.3, 0.8]),
+    shadowRadius: interpolate(trendingGlow.value, [0, 1], [6, 18]),
+  }));
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+  }));
 
   const commentCount = getCommentCount(post.id);
 
   return (
-    <>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.userInfo} onPress={handleUserPress}>
-            <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
-            <View style={styles.userDetails}>
-              <Text style={styles.username}>{post.user.username}</Text>
-              <Text style={styles.timestamp}>{post.timestamp}</Text>
-            </View>
-          </TouchableOpacity>
+    <Animated.View style={[styles.container, cardAnimatedStyle]}>
+      {/* Media Content */}
+      <TouchableOpacity activeOpacity={0.95} onPress={handleImagePress}>
+        <View style={styles.mediaContainer}>
+          {post.image && (
+            <Image source={{ uri: post.image }} style={styles.postImage} />
+          )}
           
-          <View style={styles.headerRight}>
-            {post.isTrending && (
-              <Animated.View style={[styles.trendingBadge, trendingAnimatedStyle]}>
-                <TrendingUp size={12} color="#ff6b9d" />
-                <Text style={styles.trendingText}>Trending</Text>
-              </Animated.View>
-            )}
-            <TouchableOpacity style={styles.moreButton}>
-              <MoreHorizontal size={18} color="#ffffff" />
+          {/* Trending Badge */}
+          {post.isTrending && (
+            <Animated.View style={[styles.trendingBadge, trendingAnimatedStyle]}>
+              <TrendingUp size={14} color="#FFFFFF" strokeWidth={2.5} />
+              <Text style={styles.trendingText}>Trending</Text>
+            </Animated.View>
+          )}
+
+          {/* Heart explosion */}
+          <Animated.View style={[styles.heartExplosion, heartExplosionStyle]}>
+            <Heart size={100} color="#E74C3C" fill="#E74C3C" />
+          </Animated.View>
+        </View>
+      </TouchableOpacity>
+
+      {/* Bottom Content */}
+      <View style={styles.bottomContent}>
+        <LinearGradient
+          colors={['transparent', 'rgba(30, 30, 30, 0.8)', '#1E1E1E']}
+          style={styles.gradientOverlay}
+        >
+          {/* User Info - Bottom Left */}
+          <View style={styles.userSection}>
+            <TouchableOpacity style={styles.userInfo} onPress={handleUserPress}>
+              <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
+              <View style={styles.userDetails}>
+                <Text style={styles.username}>@{post.user.username}</Text>
+                <Text style={styles.timestamp}>{post.timestamp}</Text>
+              </View>
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Image */}
-        {post.image && (
-          <Image source={{ uri: post.image }} style={styles.postImage} />
-        )}
+          {/* Action Buttons */}
+          <View style={styles.actionBar}>
+            <View style={styles.leftActions}>
+              <AnimatedTouchableOpacity
+                style={[styles.actionButton, likeAnimatedStyle]}
+                onPress={handleLike}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Heart
+                    size={24}
+                    color={isLiked ? '#E74C3C' : '#FFFFFF'}
+                    fill={isLiked ? '#E74C3C' : 'transparent'}
+                    strokeWidth={2}
+                  />
+                </View>
+              </AnimatedTouchableOpacity>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <View style={styles.leftActions}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-              <Animated.View style={likeAnimatedStyle}>
-                <Heart
-                  size={22}
-                  color={isLiked ? '#ff6b9d' : '#ffffff'}
-                  fill={isLiked ? '#ff6b9d' : 'transparent'}
-                />
-              </Animated.View>
-            </TouchableOpacity>
+              <AnimatedTouchableOpacity
+                style={[styles.actionButton, commentAnimatedStyle]}
+                onPress={handleComment}
+              >
+                <View style={styles.actionIconContainer}>
+                  <MessageCircle size={24} color="#FFFFFF" strokeWidth={2} />
+                </View>
+              </AnimatedTouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={handleCommentPress}
-            >
-              <MessageCircle size={22} color="#ffffff" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <Share2 size={22} color="#ffffff" />
-            </TouchableOpacity>
+              <AnimatedTouchableOpacity
+                style={[styles.actionButton, shareAnimatedStyle]}
+                onPress={handleShare}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Share2 size={24} color="#FFFFFF" strokeWidth={2} />
+                </View>
+              </AnimatedTouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Likes */}
-        <View style={styles.likesContainer}>
-          <Text style={[styles.likesText, isLiked && styles.likedText]}>
-            {likes} likes
-          </Text>
-        </View>
+          {/* Engagement Info */}
+          <View style={styles.engagementSection}>
+            <Text style={[styles.likesText, isLiked && styles.likedText]}>
+              {likes.toLocaleString()} likes
+            </Text>
+          </View>
 
-        {/* Content */}
-        <View style={styles.contentContainer}>
-          <Text style={styles.content}>
-            <Text style={styles.contentUsername}>{post.user.username}</Text>
-            {' '}
-            <Text style={styles.contentText}>{post.content}</Text>
-          </Text>
-        </View>
+          {/* Caption */}
+          <View style={styles.captionContainer}>
+            <Text style={styles.caption}>
+              <Text style={styles.captionUsername}>@{post.user.username}</Text>
+              <Text style={styles.captionText}> {post.content}</Text>
+            </Text>
+          </View>
 
-        {/* Comments */}
-        <TouchableOpacity onPress={handleCommentPress}>
-          <Text style={styles.viewComments}>
-            {commentCount > 0 ? `View all ${commentCount} comments` : 'Add a comment...'}
-          </Text>
-        </TouchableOpacity>
+          {/* Comments */}
+          <TouchableOpacity onPress={handleComment} style={styles.commentsContainer}>
+            <Text style={styles.viewComments}>
+              {commentCount > 0 ? `View all ${commentCount} comments` : 'Add a comment...'}
+            </Text>
+          </TouchableOpacity>
+        </LinearGradient>
       </View>
-      
-      {/* Comment System */}
-      <CommentSystem
-        visible={showComments}
-        onClose={handleCloseComments}
-        postId={post.id}
-        postType="feed"
-      />
-    </>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#000000',
-    marginBottom: 16,
+    backgroundColor: '#1E1E1E',
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  header: {
+  mediaContainer: {
+    position: 'relative',
+    width: width,
+    height: width,
+  },
+  postImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  trendingBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(108, 92, 231, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  trendingText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    marginLeft: 4,
+    letterSpacing: 0.5,
+  },
+  heartExplosion: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -50,
+    marginLeft: -50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  bottomContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+  },
+  gradientOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  userSection: {
+    marginBottom: 12,
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#9B61E5',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#6C5CE7',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
   userDetails: {
     flex: 1,
   },
   username: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   timestamp: {
-    fontSize: 11,
-    color: '#A0A0A0',
-    marginTop: 1,
+    fontSize: 13,
+    color: '#E0E0E0',
+    marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trendingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(18, 18, 18, 0.8)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    marginRight: 6,
-    shadowColor: '#9B61E5',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(155, 97, 229, 0.3)',
-  },
-  trendingText: {
-    fontSize: 9,
-    color: '#9B61E5',
-    fontWeight: '600',
-    marginLeft: 3,
-  },
-  moreButton: {
-    padding: 4,
-  },
-  postImage: {
-    width: width,
-    height: width,
-    resizeMode: 'cover',
-  },
-  actions: {
+  actionBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    marginBottom: 12,
   },
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   actionButton: {
-    marginRight: 14,
-    padding: 2,
+    marginRight: 16,
   },
-  likesContainer: {
-    paddingHorizontal: 12,
-    marginBottom: 4,
+  actionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  engagementSection: {
+    marginBottom: 8,
   },
   likesText: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#FFFFFF',
     fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   likedText: {
-    color: '#9B61E5',
+    color: '#6C5CE7',
   },
-  contentContainer: {
-    paddingHorizontal: 12,
-    marginBottom: 4,
+  captionContainer: {
+    marginBottom: 8,
   },
-  content: {
-    fontSize: 13,
-    lineHeight: 18,
+  caption: {
+    fontSize: 15,
+    lineHeight: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  contentUsername: {
-    fontWeight: '600',
+  captionUsername: {
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  contentText: {
-    color: '#FFFFFF',
+  captionText: {
+    color: '#E0E0E0',
+    fontWeight: '400',
+  },
+  commentsContainer: {
+    paddingVertical: 4,
   },
   viewComments: {
-    fontSize: 13,
-    color: '#A0A0A0',
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    fontSize: 14,
+    color: '#999999',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

@@ -14,20 +14,25 @@ import Animated, {
   withRepeat,
   withTiming,
   interpolate,
+  withSpring,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
 interface HeaderProps {
   onMessagesPress?: () => void;
 }
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
 export default function Header({ onMessagesPress }: HeaderProps) {
   const router = useRouter();
   const logoGlow = useSharedValue(0);
-  const [unreadCount] = useState(2);
+  const messageScale = useSharedValue(1);
+  const [unreadCount] = useState(3);
 
   React.useEffect(() => {
     logoGlow.value = withRepeat(
-      withTiming(1, { duration: 2500 }),
+      withTiming(1, { duration: 3000 }),
       -1,
       true
     );
@@ -36,7 +41,7 @@ export default function Header({ onMessagesPress }: HeaderProps) {
   const logoAnimatedStyle = useAnimatedStyle(() => {
     return {
       shadowOpacity: interpolate(logoGlow.value, [0, 1], [0.3, 0.6]),
-      shadowRadius: interpolate(logoGlow.value, [0, 1], [8, 15]),
+      shadowRadius: interpolate(logoGlow.value, [0, 1], [8, 16]),
     };
   });
 
@@ -47,7 +52,17 @@ export default function Header({ onMessagesPress }: HeaderProps) {
     };
   });
 
+  const messageAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: messageScale.value }],
+    };
+  });
+
   const handleMessagesPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    messageScale.value = withSpring(0.95, {}, () => {
+      messageScale.value = withSpring(1);
+    });
     router.push('/(tabs)/messages');
   };
 
@@ -55,26 +70,30 @@ export default function Header({ onMessagesPress }: HeaderProps) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
+          {/* Logo with Heart */}
           <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
             <View style={styles.logoContent}>
               <Animated.View style={[styles.heartContainer, heartAnimatedStyle]}>
-                <Heart size={20} color="#ff6b9d" fill="#ff6b9d" />
+                <Heart size={24} color="#6C5CE7" fill="#6C5CE7" />
               </Animated.View>
               <Text style={styles.logo}>The Club</Text>
             </View>
           </Animated.View>
           
-          <TouchableOpacity 
+          {/* Messages Button */}
+          <AnimatedTouchableOpacity 
             onPress={handleMessagesPress} 
-            style={styles.messagesButton}
+            style={[styles.messagesButton, messageAnimatedStyle]}
           >
-            <MessageCircle size={20} color="#e0aaff" />
-            {unreadCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+            <View style={styles.messagesIconContainer}>
+              <MessageCircle size={22} color="#FFFFFF" strokeWidth={2} />
+              {unreadCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationText}>{unreadCount}</Text>
+                </View>
+              )}
+            </View>
+          </AnimatedTouchableOpacity>
         </View>
         
         {/* Subtle divider */}
@@ -86,23 +105,23 @@ export default function Header({ onMessagesPress }: HeaderProps) {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#000000',
+    backgroundColor: '#1E1E1E',
   },
   container: {
-    backgroundColor: '#000000',
+    backgroundColor: '#1E1E1E',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   logoContainer: {
-    shadowColor: '#9B61E5',
+    shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 8,
   },
   logoContent: {
@@ -110,49 +129,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heartContainer: {
-    marginRight: 6,
-    shadowColor: '#9B61E5',
+    marginRight: 8,
+    shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
   logo: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
-    color: '#9B61E5',
+    color: '#6C5CE7',
     letterSpacing: 0.5,
   },
   messagesButton: {
     position: 'relative',
-    padding: 6,
-    backgroundColor: 'rgba(18, 18, 18, 0.8)',
-    borderRadius: 16,
+  },
+  messagesIconContainer: {
+    position: 'relative',
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(155, 97, 229, 0.3)',
+    borderColor: 'rgba(108, 92, 231, 0.3)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   notificationBadge: {
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#9B61E5',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    backgroundColor: '#6C5CE7',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: '#000000',
+    borderColor: '#1E1E1E',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 6,
   },
   notificationText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   divider: {
     height: 0.5,
-    backgroundColor: 'rgba(155, 97, 229, 0.2)',
-    marginHorizontal: 16,
+    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    marginHorizontal: 20,
   },
 });
