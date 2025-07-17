@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,11 @@ import {
   RefreshControl,
   Modal,
   Dimensions,
+  StatusBar,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import Animated, {
@@ -22,18 +25,22 @@ import Animated, {
   withRepeat,
   withTiming,
   interpolate,
+  useAnimatedScrollHandler,
+  runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Flame, Filter, Heart, MessageCircle, X, Play, Eye } from 'lucide-react-native';
-import { mockPosts } from '../data/mockData';
-import { Post } from '../types';
+import { Flame, Filter, Heart, X, Play, Eye, Clock } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
-const TILE_SIZE = (width - 48) / 3; // 3 columns with 16px spacing
+
+// Calculate masonry item dimensions
+const PADDING = 8;
+const COLUMNS = 2;
+const ITEM_WIDTH = (width - (COLUMNS + 1) * PADDING) / COLUMNS;
 
 const genres = [
-  'All', 'Fitness', 'Music', 'Coding', 'AI', 'Crypto', 
-  'Gaming', 'Film', 'Comedy', 'Fashion', 'Art', 'Travel'
+  'All', 'Fitness', 'Music', 'AI', 'Crypto', 'Coding', 
+  'Gaming', 'Film', 'Fashion', 'Art', 'Travel', 'Tech'
 ];
 
 const contentTypes = ['All', 'Image', 'Reel', 'Video', 'AI-generated'];
@@ -43,63 +50,106 @@ const trendingStyles = ['Likes', 'Shares', 'Velocity', 'Comments'];
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
-interface TrendingPost extends Post {
-  viewCount: number;
-  isVideo: boolean;
-  duration?: string;
+interface TrendingPost {
+  id: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  duration: string;
+  likes: number;
+  views: number;
+  isTrending: boolean;
+  isLiked: boolean;
+  aspectRatio: number; // For masonry layout
+  genre: string;
 }
 
+// Mock data with varied aspect ratios for masonry effect
 const mockTrendingPosts: TrendingPost[] = [
-  ...mockPosts.map((post, index) => ({
-    ...post,
-    viewCount: Math.floor(Math.random() * 50000) + 1000,
-    isVideo: index % 3 === 0,
-    duration: index % 3 === 0 ? `${Math.floor(Math.random() * 60) + 15}s` : undefined,
-  })),
-  // Add more posts for variety
   {
-    id: 'trending-1',
-    user: {
-      id: 'creator-1',
-      username: 'cosmic_artist',
-      avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=150',
-      bio: 'Digital creator',
-      location: 'New York',
-      age: 26,
-      isHost: true,
-    },
-    content: 'Amazing cosmic art creation process 🌌',
-    image: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=400',
-    likes: 15420,
-    comments: 234,
-    isLiked: false,
-    isTrending: true,
-    timestamp: '3h ago',
-    viewCount: 25600,
-    isVideo: true,
+    id: '1',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    thumbnailUrl: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=400',
     duration: '45s',
+    likes: 15420,
+    views: 125600,
+    isTrending: true,
+    isLiked: false,
+    aspectRatio: 1.4, // Taller
+    genre: 'AI',
   },
   {
-    id: 'trending-2',
-    user: {
-      id: 'creator-2',
-      username: 'neon_dreamer',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
-      bio: 'Neon artist',
-      location: 'LA',
-      age: 24,
-      isHost: false,
-    },
-    content: 'Cyberpunk neon vibes ⚡',
-    image: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=400',
+    id: '2',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    thumbnailUrl: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=400',
+    duration: '22s',
     likes: 8930,
-    comments: 156,
+    views: 42300,
+    isTrending: false,
     isLiked: true,
-    isTrending: true,
-    timestamp: '1h ago',
-    viewCount: 42300,
-    isVideo: false,
+    aspectRatio: 1.0, // Square
+    genre: 'Music',
   },
+  {
+    id: '3',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl: 'https://images.pexels.com/photos/1181263/pexels-photo-1181263.jpeg?auto=compress&cs=tinysrgb&w=400',
+    duration: '18s',
+    likes: 24500,
+    views: 89200,
+    isTrending: true,
+    isLiked: false,
+    aspectRatio: 0.8, // Shorter/wider
+    genre: 'Fitness',
+  },
+  {
+    id: '4',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    thumbnailUrl: 'https://images.pexels.com/photos/1181271/pexels-photo-1181271.jpeg?auto=compress&cs=tinysrgb&w=400',
+    duration: '31s',
+    likes: 12800,
+    views: 67500,
+    isTrending: false,
+    isLiked: false,
+    aspectRatio: 1.6, // Very tall
+    genre: 'Travel',
+  },
+  {
+    id: '5',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    thumbnailUrl: 'https://images.pexels.com/photos/1181276/pexels-photo-1181276.jpeg?auto=compress&cs=tinysrgb&w=400',
+    duration: '28s',
+    likes: 19700,
+    views: 156400,
+    isTrending: true,
+    isLiked: true,
+    aspectRatio: 1.2,
+    genre: 'Gaming',
+  },
+  {
+    id: '6',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+    thumbnailUrl: 'https://images.pexels.com/photos/1181519/pexels-photo-1181519.jpeg?auto=compress&cs=tinysrgb&w=400',
+    duration: '16s',
+    likes: 7650,
+    views: 34200,
+    isTrending: false,
+    isLiked: false,
+    aspectRatio: 0.9,
+    genre: 'Fashion',
+  },
+  // Add more posts for variety
+  ...Array.from({ length: 20 }, (_, i) => ({
+    id: `${7 + i}`,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    thumbnailUrl: `https://images.pexels.com/photos/${1181200 + (i * 17)}/pexels-photo-${1181200 + (i * 17)}.jpeg?auto=compress&cs=tinysrgb&w=400`,
+    duration: `${15 + (i % 40)}s`,
+    likes: Math.floor(Math.random() * 50000) + 1000,
+    views: Math.floor(Math.random() * 200000) + 5000,
+    isTrending: Math.random() > 0.7,
+    isLiked: Math.random() > 0.5,
+    aspectRatio: 0.8 + (Math.random() * 1.2), // Random between 0.8 and 2.0
+    genre: genres[Math.floor(Math.random() * genres.length)],
+  })),
 ];
 
 export default function TrendingScreen() {
@@ -115,7 +165,8 @@ export default function TrendingScreen() {
     trendingStyle: 'Likes',
   });
 
-  const fireGlow = useSharedValue(0);
+  const scrollY = useSharedValue(0);
+  const filterGlow = useSharedValue(0);
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -126,17 +177,36 @@ export default function TrendingScreen() {
   });
 
   React.useEffect(() => {
-    fireGlow.value = withRepeat(
-      withTiming(1, { duration: 2000 }),
+    filterGlow.value = withRepeat(
+      withTiming(1, { duration: 3000 }),
       -1,
       true
     );
   }, []);
 
-  const fireAnimatedStyle = useAnimatedStyle(() => {
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 100],
+      [1, 0.95],
+      'clamp'
+    );
+    
     return {
-      shadowOpacity: interpolate(fireGlow.value, [0, 1], [0.3, 0.8]),
-      shadowRadius: interpolate(fireGlow.value, [0, 1], [6, 15]),
+      opacity,
+    };
+  });
+
+  const filterAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      shadowOpacity: interpolate(filterGlow.value, [0, 1], [0.2, 0.4]),
+      shadowRadius: interpolate(filterGlow.value, [0, 1], [4, 8]),
     };
   });
 
@@ -163,103 +233,17 @@ export default function TrendingScreen() {
   const handleGenreSelect = useCallback((genre: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedGenre(genre);
-    // Filter posts based on genre
   }, []);
 
   const handleFilterApply = useCallback(() => {
     setShowFilterModal(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Apply filters
   }, []);
 
-  // Masonry-style layout calculation
-  const getItemHeight = (index: number) => {
-    const heights = [TILE_SIZE * 1.3, TILE_SIZE, TILE_SIZE * 1.5];
-    return heights[index % heights.length];
-  };
-
-  const PostTile = React.memo(({ post, index }: { post: TrendingPost; index: number }) => {
-    const scale = useSharedValue(1);
-    const glow = useSharedValue(0);
-
-    const handlePressIn = () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      scale.value = withSpring(0.95);
-      glow.value = withTiming(1, { duration: 200 });
-    };
-
-    const handlePressOut = () => {
-      scale.value = withSpring(1);
-      glow.value = withTiming(0, { duration: 200 });
-    };
-
-    const handlePress = () => {
-      router.push({
-        pathname: '/ProfileScreen',
-        params: { userId: post.user.id }
-      });
-    };
-
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ scale: scale.value }],
-      shadowOpacity: interpolate(glow.value, [0, 1], [0.1, 0.4]),
-      shadowRadius: interpolate(glow.value, [0, 1], [4, 12]),
-    }));
-
-    const tileHeight = getItemHeight(index);
-
-    return (
-      <AnimatedTouchableOpacity
-        style={[styles.postTile, { height: tileHeight }, animatedStyle]}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={handlePress}
-        activeOpacity={0.9}
-      >
-        <View style={styles.postImageContainer}>
-          <Image source={{ uri: post.image }} style={styles.postImage} />
-          
-          {/* Video indicator */}
-          {post.isVideo && (
-            <View style={styles.videoIndicator}>
-              <Play size={12} color="#F5F5F5" fill="#F5F5F5" />
-              <Text style={styles.videoDuration}>{post.duration}</Text>
-            </View>
-          )}
-
-          {/* Trending badge */}
-          {post.isTrending && (
-            <Animated.View style={[styles.trendingBadge, fireAnimatedStyle]}>
-              <Flame size={10} color="#F5F5F5" fill="#F5F5F5" />
-            </Animated.View>
-          )}
-
-          {/* Like indicator */}
-          {post.isLiked && (
-            <View style={styles.likeIndicator}>
-              <Heart size={12} color="#E74C3C" fill="#E74C3C" />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.postInfo}>
-          <Text style={styles.creatorHandle} numberOfLines={1}>
-            @{post.user.username}
-          </Text>
-          <View style={styles.postStats}>
-            <View style={styles.statItem}>
-              <Eye size={10} color="#B0B0B0" />
-              <Text style={styles.statText}>{formatNumber(post.viewCount)}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Heart size={10} color="#B0B0B0" />
-              <Text style={styles.statText}>{formatNumber(post.likes)}</Text>
-            </View>
-          </View>
-        </View>
-      </AnimatedTouchableOpacity>
-    );
-  });
+  const handlePostPress = useCallback((post: TrendingPost) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Handle post press - could navigate to full screen video player
+  }, []);
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
@@ -269,6 +253,116 @@ export default function TrendingScreen() {
     }
     return num.toString();
   };
+
+  const filteredPosts = selectedGenre === 'All' 
+    ? trendingPosts 
+    : trendingPosts.filter(post => post.genre === selectedGenre);
+
+  const PostItem = React.memo(({ post, index }: { post: TrendingPost; index: number }) => {
+    const scale = useSharedValue(1);
+    const opacity = useSharedValue(1);
+
+    const handlePressIn = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      scale.value = withSpring(0.96);
+      opacity.value = withTiming(0.8);
+    };
+
+    const handlePressOut = () => {
+      scale.value = withSpring(1);
+      opacity.value = withTiming(1);
+    };
+
+    const handlePress = () => {
+      handlePostPress(post);
+    };
+
+    const handleLikePress = (e: any) => {
+      e.stopPropagation();
+      handleLike(post.id);
+    };
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    }));
+
+    const itemHeight = ITEM_WIDTH * post.aspectRatio;
+
+    return (
+      <AnimatedTouchableOpacity
+        style={[
+          styles.postItem,
+          {
+            width: ITEM_WIDTH,
+            height: itemHeight,
+            marginBottom: PADDING,
+            marginRight: (index % 2 === 0) ? PADDING : 0,
+          },
+          animatedStyle
+        ]}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={handlePress}
+        activeOpacity={0.9}
+      >
+        <ImageBackground
+          source={{ uri: post.thumbnailUrl }}
+          style={styles.postBackground}
+          imageStyle={styles.postImage}
+        >
+          {/* Gradient overlay for better text visibility */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0, 0, 0, 0.7)']}
+            style={styles.gradientOverlay}
+          />
+          
+          {/* Duration badge */}
+          <View style={styles.durationBadge}>
+            <Clock size={10} color="#EAEAEA" />
+            <Text style={styles.durationText}>{post.duration}</Text>
+          </View>
+
+          {/* Trending badge */}
+          {post.isTrending && (
+            <View style={styles.trendingBadge}>
+              <Flame size={12} color="#EAEAEA" fill="#EAEAEA" />
+            </View>
+          )}
+
+          {/* Play icon overlay */}
+          <View style={styles.playOverlay}>
+            <View style={styles.playButton}>
+              <Play size={16} color="#EAEAEA" fill="#EAEAEA" />
+            </View>
+          </View>
+
+          {/* Stats overlay */}
+          <View style={styles.statsOverlay}>
+            <View style={styles.statItem}>
+              <TouchableOpacity
+                style={styles.likeButton}
+                onPress={handleLikePress}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Heart
+                  size={14}
+                  color={post.isLiked ? '#E74C3C' : '#EAEAEA'}
+                  fill={post.isLiked ? '#E74C3C' : 'transparent'}
+                />
+              </TouchableOpacity>
+              <Text style={styles.statText}>{formatNumber(post.likes)}</Text>
+            </View>
+            
+            <View style={styles.statItem}>
+              <Eye size={12} color="#999999" />
+              <Text style={styles.statTextMuted}>{formatNumber(post.views)}</Text>
+            </View>
+          </View>
+        </ImageBackground>
+      </AnimatedTouchableOpacity>
+    );
+  });
 
   const renderGenreFilter = ({ item }: { item: string }) => {
     const isSelected = item === selectedGenre;
@@ -280,13 +374,39 @@ export default function TrendingScreen() {
         <Text style={[styles.genreText, isSelected && styles.selectedGenreText]}>
           {item}
         </Text>
-        {isSelected && <View style={styles.genreGlow} />}
+        {isSelected && <View style={styles.selectedIndicator} />}
       </TouchableOpacity>
     );
   };
 
-  const renderPost = ({ item, index }: { item: TrendingPost; index: number }) => (
-    <PostTile post={item} index={index} />
+  // Create masonry layout data
+  const masonryData = React.useMemo(() => {
+    const leftColumn: TrendingPost[] = [];
+    const rightColumn: TrendingPost[] = [];
+    let leftHeight = 0;
+    let rightHeight = 0;
+
+    filteredPosts.forEach((post, index) => {
+      const itemHeight = ITEM_WIDTH * post.aspectRatio;
+      
+      if (leftHeight <= rightHeight) {
+        leftColumn.push(post);
+        leftHeight += itemHeight + PADDING;
+      } else {
+        rightColumn.push(post);
+        rightHeight += itemHeight + PADDING;
+      }
+    });
+
+    return { leftColumn, rightColumn };
+  }, [filteredPosts]);
+
+  const renderMasonryColumn = (columnData: TrendingPost[], columnIndex: number) => (
+    <View style={styles.masonryColumn}>
+      {columnData.map((post, index) => (
+        <PostItem key={post.id} post={post} index={columnIndex} />
+      ))}
+    </View>
   );
 
   if (!fontsLoaded) {
@@ -299,92 +419,82 @@ export default function TrendingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#1E1E1E', '#2A2A2A', '#1E1E1E']}
-        style={styles.background}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Heart size={24} color="#E74C3C" fill="#E74C3C" />
-            <Text style={[styles.logoText, { fontFamily: 'Inter_700Bold' }]}>
-              The Club
-            </Text>
-          </View>
-          
+      <StatusBar barStyle="light-content" backgroundColor="#1E1E1E" />
+      
+      {/* Header */}
+      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <View style={styles.logoContainer}>
+          <Heart size={22} color="#E74C3C" fill="#E74C3C" />
+          <Text style={[styles.logoText, { fontFamily: 'Inter_700Bold' }]}>
+            The Club
+          </Text>
+        </View>
+        
+        <Animated.View style={filterAnimatedStyle}>
           <TouchableOpacity 
             onPress={() => setShowFilterModal(true)} 
             style={styles.filterButton}
           >
-            <Filter size={22} color="#B0B0B0" />
+            <Filter size={20} color="#8A2BE2" />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
+      </Animated.View>
 
-        {/* Hot Right Now Section */}
-        <View style={styles.hotSection}>
-          <View style={styles.hotHeader}>
-            <Animated.View style={[styles.fireIconContainer, fireAnimatedStyle]}>
-              <Flame size={16} color="#7A4FE2" fill="#7A4FE2" />
-            </Animated.View>
-            <Text style={[styles.hotTitle, { fontFamily: 'Inter_600SemiBold' }]}>
-              Hot Right Now
-            </Text>
-          </View>
-          <Text style={[styles.hotSubtitle, { fontFamily: 'Inter_400Regular' }]}>
-            Trending Algorithm Updated Every 5 Minutes
-          </Text>
-        </View>
-
-        {/* Genre Filters */}
-        <View style={styles.genreSection}>
-          <FlatList
-            data={genres}
-            renderItem={renderGenreFilter}
-            keyExtractor={(item) => item}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.genreList}
-          />
-        </View>
-
-        {/* Posts Grid */}
+      {/* Genre Filter Bar */}
+      <View style={styles.genreSection}>
         <FlatList
-          data={trendingPosts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          columnWrapperStyle={styles.row}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.postsContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor="#7A4FE2"
-              progressBackgroundColor="#2A2A2A"
-            />
-          }
+          data={genres}
+          renderItem={renderGenreFilter}
+          keyExtractor={(item) => item}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.genreList}
         />
+      </View>
 
-        {/* Filter Modal */}
-        <Modal
-          visible={showFilterModal}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowFilterModal(false)}
-        >
-          <View style={styles.modalOverlay}>
+      {/* Masonry Posts Grid */}
+      <Animated.ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#8A2BE2"
+            progressBackgroundColor="#1E1E1E"
+            colors={['#8A2BE2']}
+          />
+        }
+      >
+        <View style={styles.masonryContainer}>
+          {renderMasonryColumn(masonryData.leftColumn, 0)}
+          {renderMasonryColumn(masonryData.rightColumn, 1)}
+        </View>
+      </Animated.ScrollView>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={40} style={styles.modalBlur}>
             <View style={styles.filterModal}>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { fontFamily: 'Inter_600SemiBold' }]}>
                   Filters
                 </Text>
                 <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                  <X size={24} color="#B0B0B0" />
+                  <X size={24} color="#EAEAEA" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalContent}>
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
                 {/* Content Type */}
                 <View style={styles.filterSection}>
                   <Text style={[styles.filterLabel, { fontFamily: 'Inter_500Medium' }]}>
@@ -492,7 +602,7 @@ export default function TrendingScreen() {
 
               <TouchableOpacity style={styles.applyButton} onPress={handleFilterApply}>
                 <LinearGradient
-                  colors={['#7A4FE2', '#6B3FCF']}
+                  colors={['#8A2BE2', '#6A1B9A']}
                   style={styles.applyButtonGradient}
                 >
                   <Text style={[styles.applyButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
@@ -501,9 +611,9 @@ export default function TrendingScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </Modal>
-      </LinearGradient>
+          </BlurView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -511,9 +621,7 @@ export default function TrendingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  background: {
-    flex: 1,
+    backgroundColor: '#1E1E1E',
   },
   loadingContainer: {
     flex: 1,
@@ -522,7 +630,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1E1E',
   },
   loadingText: {
-    color: '#F5F5F5',
+    color: '#EAEAEA',
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
   },
@@ -530,122 +638,116 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#1E1E1E',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   logoText: {
-    color: '#F5F5F5',
-    fontSize: 22,
+    color: '#EAEAEA',
+    fontSize: 20,
     fontWeight: '700',
-    marginLeft: 12,
+    marginLeft: 8,
   },
   filterButton: {
-    padding: 12,
-    backgroundColor: '#2A2A2A',
+    padding: 10,
+    backgroundColor: 'rgba(138, 43, 226, 0.15)',
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
-  },
-  hotSection: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  hotHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  fireIconContainer: {
-    marginRight: 8,
-    shadowColor: '#7A4FE2',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
     elevation: 4,
   },
-  hotTitle: {
-    fontSize: 18,
-    color: '#F5F5F5',
-    fontWeight: '600',
-  },
-  hotSubtitle: {
-    fontSize: 12,
-    color: '#B0B0B0',
-    fontWeight: '400',
-  },
   genreSection: {
-    marginBottom: 16,
+    paddingVertical: 8,
+    backgroundColor: '#1E1E1E',
   },
   genreList: {
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: 16,
+    gap: 8,
   },
   genreChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(138, 43, 226, 0.1)',
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 43, 226, 0.2)',
   },
   selectedGenreChip: {
-    backgroundColor: '#7A4FE2',
-    borderColor: '#7A4FE2',
+    backgroundColor: '#8A2BE2',
+    borderColor: '#8A2BE2',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
   genreText: {
-    color: '#B0B0B0',
+    color: '#999999',
     fontSize: 14,
     fontWeight: '500',
   },
   selectedGenreText: {
-    color: '#F5F5F5',
+    color: '#EAEAEA',
     fontWeight: '600',
   },
-  genreGlow: {
+  selectedIndicator: {
     position: 'absolute',
     top: -2,
     left: -2,
     right: -2,
     bottom: -2,
-    backgroundColor: '#7A4FE2',
+    backgroundColor: 'rgba(138, 43, 226, 0.3)',
     borderRadius: 22,
-    opacity: 0.3,
     zIndex: -1,
   },
-  postsContainer: {
-    paddingHorizontal: 16,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: PADDING,
     paddingBottom: 20,
   },
-  row: {
+  masonryContainer: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
   },
-  postTile: {
-    width: TILE_SIZE,
-    backgroundColor: '#2A2A2A',
+  masonryColumn: {
+    flex: 1,
+  },
+  postItem: {
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
   },
-  postImageContainer: {
-    position: 'relative',
-    flex: 1,
-  },
-  postImage: {
+  postBackground: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    justifyContent: 'space-between',
   },
-  videoIndicator: {
+  postImage: {
+    borderRadius: 16,
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  durationBadge: {
     position: 'absolute',
     top: 8,
     left: 8,
@@ -656,69 +758,80 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  videoDuration: {
-    color: '#F5F5F5',
+  durationText: {
+    color: '#EAEAEA',
     fontSize: 10,
     fontWeight: '600',
-    marginLeft: 4,
+    marginLeft: 3,
   },
   trendingBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#7A4FE2',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    backgroundColor: 'rgba(138, 43, 226, 0.9)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7A4FE2',
-    shadowOffset: { width: 0, height: 0 },
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.6,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 4,
   },
-  likeIndicator: {
+  playOverlay: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -16 }, { translateY: -16 }],
+  },
+  playButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  postInfo: {
-    padding: 12,
-  },
-  creatorHandle: {
-    color: '#F5F5F5',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  postStats: {
+  statsOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    right: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  likeButton: {
+    padding: 2,
   },
   statText: {
-    color: '#B0B0B0',
+    color: '#EAEAEA',
     fontSize: 10,
+    fontWeight: '600',
+  },
+  statTextMuted: {
+    color: '#999999',
+    fontSize: 9,
     fontWeight: '500',
-    marginLeft: 3,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
   },
+  modalBlur: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   filterModal: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: 'rgba(30, 30, 30, 0.95)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
@@ -731,10 +844,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3A',
+    borderBottomColor: 'rgba(138, 43, 226, 0.2)',
   },
   modalTitle: {
-    color: '#F5F5F5',
+    color: '#EAEAEA',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -746,7 +859,7 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   filterLabel: {
-    color: '#F5F5F5',
+    color: '#EAEAEA',
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 12,
@@ -759,35 +872,40 @@ const styles = StyleSheet.create({
   filterOption: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(138, 43, 226, 0.1)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#3A3A3A',
+    borderColor: 'rgba(138, 43, 226, 0.2)',
   },
   selectedFilterOption: {
-    backgroundColor: '#7A4FE2',
-    borderColor: '#7A4FE2',
+    backgroundColor: '#8A2BE2',
+    borderColor: '#8A2BE2',
   },
   filterOptionText: {
-    color: '#B0B0B0',
+    color: '#999999',
     fontSize: 14,
     fontWeight: '500',
   },
   selectedFilterOptionText: {
-    color: '#F5F5F5',
+    color: '#EAEAEA',
     fontWeight: '600',
   },
   applyButton: {
     margin: 24,
     borderRadius: 20,
     overflow: 'hidden',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   applyButtonGradient: {
     paddingVertical: 16,
     alignItems: 'center',
   },
   applyButtonText: {
-    color: '#F5F5F5',
+    color: '#EAEAEA',
     fontSize: 16,
     fontWeight: '600',
   },
