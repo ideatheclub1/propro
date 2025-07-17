@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, TrendingUp, Search, User, Play, MessageCircle, Plus } from 'lucide-react-native';
+import { Chrome as Home, TrendingUp, Search, User, Play, MessageCircle, Plus } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
