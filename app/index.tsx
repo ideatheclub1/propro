@@ -6,6 +6,7 @@ import { useUser } from '@/contexts/UserContext';
 export default function Index() {
   const { isAuthenticated, isLoading } = useUser();
 
+  // Show loading while determining auth state
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -14,6 +15,7 @@ export default function Index() {
     );
   }
 
+  // Safe navigation based on auth state
   return <Redirect href={isAuthenticated ? "/(tabs)" : "/login"} />;
 }
 

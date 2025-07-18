@@ -140,6 +140,7 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    // Input validation
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email address');
       return;
@@ -164,10 +165,15 @@ export default function LoginScreen() {
       const success = await userLogin(email.trim(), password);
       
       if (success) {
-        // Safe navigation with slight delay to ensure context updates
+        // Safe navigation with proper delay
         setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 100);
+          try {
+            router.replace('/(tabs)');
+          } catch (navError) {
+            console.error('Navigation error:', navError);
+            Alert.alert('Error', 'Failed to navigate to home screen');
+          }
+        }, 500);
       } else {
         Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
       }

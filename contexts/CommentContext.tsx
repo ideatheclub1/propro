@@ -225,12 +225,13 @@ export const CommentProvider: React.FC<{ children: ReactNode }> = ({ children })
       dispatch({ type: 'SET_LOADING', payload: true });
       const storedComments = await AsyncStorage.getItem(STORAGE_KEY);
       
-      if (storedComments) {
+      if (storedComments && storedComments !== 'null' && storedComments !== 'undefined') {
         try {
           const parsedComments = JSON.parse(storedComments);
           // Validate the parsed data structure
           if (parsedComments && typeof parsedComments === 'object') {
             dispatch({ type: 'SET_COMMENTS', payload: parsedComments });
+            return;
           } else {
             // Invalid data structure, use mock data
             dispatch({ type: 'SET_COMMENTS', payload: mockComments });

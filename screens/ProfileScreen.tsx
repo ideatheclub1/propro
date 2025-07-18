@@ -163,6 +163,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
   if (!user || !currentUser) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6C5CE7" />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -356,22 +357,22 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
 
           {/* Clean Typography */}
           <View style={styles.userInfo}>
-            <Text style={[styles.username, { fontFamily: 'Inter_700Bold' }]}>
-              {user?.username || 'Guest User'}
+            <Text style={[styles.username, fontsLoaded ? { fontFamily: 'Inter_700Bold' } : {}]}>
+              {user?.username ?? 'Guest User'}
             </Text>
             
             <View style={styles.locationContainer}>
               <MapPin size={16} color="#B0B0B0" />
-              <Text style={[styles.locationText, { fontFamily: 'Inter_400Regular' }]}>
-                {user?.location || 'Unknown Location'}
+              <Text style={[styles.locationText, fontsLoaded ? { fontFamily: 'Inter_400Regular' } : {}]}>
+                {user?.location ?? 'Unknown Location'}
               </Text>
-              <Text style={[styles.ageText, { fontFamily: 'Inter_400Regular' }]}>
-                • {user?.age || '??'}
+              <Text style={[styles.ageText, fontsLoaded ? { fontFamily: 'Inter_400Regular' } : {}]}>
+                • {user?.age ?? '??'}
               </Text>
             </View>
             
-            <Text style={[styles.bio, { fontFamily: 'Inter_400Regular' }]}>
-              {user?.bio || 'No bio available'}
+            <Text style={[styles.bio, fontsLoaded ? { fontFamily: 'Inter_400Regular' } : {}]}>
+              {user?.bio ?? 'No bio available'}
             </Text>
           </View>
 
@@ -453,7 +454,12 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
                   <BlurView intensity={30} style={styles.messageButtonBlur}>
                     <MessageCircle size={18} color="#FFFFFF" />
                     <Text style={[styles.messageButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                      Message
+            <Image 
+              source={{ 
+                uri: user?.avatar ?? 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' 
+              }} 
+              style={styles.profileImage} 
+            />
                     </Text>
                   </BlurView>
                 </TouchableOpacity>

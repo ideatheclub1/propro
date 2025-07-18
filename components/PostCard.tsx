@@ -47,6 +47,10 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
   const trendingGlow = useSharedValue(0);
   const cardScale = useSharedValue(1);
 
+  // Safe guards for missing data
+  if (!post || !currentUser) {
+    return null;
+  }
   React.useEffect(() => {
     if (post.isTrending) {
       trendingGlow.value = withTiming(1, { duration: 2000 }, () => {
@@ -56,7 +60,11 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
   }, [post.isTrending]);
 
   const handleLike = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
     
     setIsLiked(!isLiked);
     setLikes(isLiked ? likes - 1 : likes + 1);
@@ -79,7 +87,11 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
   };
 
   const handleComment = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
     commentScale.value = withSequence(
       withSpring(1.2, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 8, stiffness: 200 })
@@ -88,7 +100,11 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
   };
 
   const handleShare = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
     shareScale.value = withSequence(
       withSpring(1.2, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 8, stiffness: 200 })
@@ -97,12 +113,18 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
   };
 
   const handleUserPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
+    
+    if (!post?.user?.id || !currentUser?.id) return;
+    
     if (post?.user?.id === currentUser?.id) {
       router.push('/(tabs)/profile');
       return;
     }
-    if (!post?.user?.id) return;
     router.push({
       pathname: '/ProfileScreen',
       params: { userId: post.user.id }
@@ -110,7 +132,11 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
   };
 
   const handleImagePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
     cardScale.value = withSequence(
       withSpring(0.98, { damping: 15, stiffness: 200 }),
       withSpring(1, { damping: 15, stiffness: 200 })
@@ -182,12 +208,14 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
           <View style={styles.userSection}>
             <TouchableOpacity style={styles.userInfo} onPress={handleUserPress}>
               <Image 
-                source={{ uri: post?.user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+                source={{ 
+                  uri: post?.user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150'
+                }} 
                 style={styles.avatar} 
               />
               <View style={styles.userDetails}>
-                <Text style={styles.username}>@{post?.user?.username || 'Guest'}</Text>
-                <Text style={styles.timestamp}>{post?.timestamp || 'Just now'}</Text>
+                <Text style={styles.username}>@{post?.user?.username ?? 'Guest'}</Text>
+                <Text style={styles.timestamp}>{post?.timestamp ?? 'Just now'}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -239,8 +267,8 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
           {/* Caption */}
           <View style={styles.captionContainer}>
             <Text style={styles.caption}>
-              <Text style={styles.captionUsername}>@{post?.user?.username || 'Guest'}</Text>
-              <Text style={styles.captionText}> {post?.content || ''}</Text>
+              <Text style={styles.captionUsername}>@{post?.user?.username ?? 'Guest'}</Text>
+              <Text style={styles.captionText}> {post?.content ?? ''}</Text>
             </Text>
           </View>
 

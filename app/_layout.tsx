@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { CommentProvider } from '@/contexts/CommentContext';
@@ -14,6 +15,7 @@ export default function RootLayout() {
       <UserProvider>
         <CommentProvider>
           <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
             <Stack.Screen name="login" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen 
@@ -28,9 +30,8 @@ export default function RootLayout() {
             <Stack.Screen name="conversation" />
             <Stack.Screen name="+not-found" />
           </Stack>
-          <StatusBar style="auto" />
+          <StatusBar style="light" backgroundColor="#1E1E1E" />
         </CommentProvider>
       </UserProvider>
     </GestureHandlerRootView>
   );
-}

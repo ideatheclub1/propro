@@ -30,11 +30,21 @@ export default function Header({ onMessagesPress }: HeaderProps) {
   const { user } = useUser();
   const logoGlow = useSharedValue(0);
   const messageScale = useSharedValue(1);
-  const [unreadCount] = useState(3);
+  const [unreadCount] = useState(2);
 
   // Don't render if no user data
   if (!user) {
-    return null;
+    return (
+      <View style={styles.safeArea}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logo}>The Club</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
   }
 
   React.useEffect(() => {
@@ -66,7 +76,11 @@ export default function Header({ onMessagesPress }: HeaderProps) {
   });
 
   const handleMessagesPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
     messageScale.value = withSpring(0.95, {}, () => {
       messageScale.value = withSpring(1);
     });

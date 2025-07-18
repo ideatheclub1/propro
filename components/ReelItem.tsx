@@ -97,6 +97,8 @@ export default function ReelItem({
   }, [isActive]);
 
   const handleUserPress = () => {
+    if (!reel?.user?.id || !currentUser?.id) return;
+    
     if (reel?.user?.id === currentUser?.id) {
       Alert.alert(
         'Your Profile',
@@ -107,7 +109,6 @@ export default function ReelItem({
         ]
       );
     } else {
-      if (!reel?.user?.id) return;
       router.push({
         pathname: '/ProfileScreen',
         params: { userId: reel.user.id }
@@ -116,7 +117,11 @@ export default function ReelItem({
   };
 
   const handleLike = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
     
     setIsLiked(!isLiked);
     setLikes(isLiked ? likes - 1 : likes + 1);

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
-  Alert,
   FlatList,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -20,7 +21,7 @@ import * as Haptics from 'expo-haptics';
 import Header from '../components/Header';
 import StoryCarousel from '../components/StoryCarousel';
 import PostCard from '../components/PostCard';
-import { mockPosts, mockStories, mockUsers } from '../data/mockData';
+import { mockPosts, mockStories } from '../data/mockData';
 import { Post, Story } from '../types';
 import { useUser } from '@/contexts/UserContext';
 
@@ -29,16 +30,26 @@ const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 export default function FeedScreen() {
   const router = useRouter();
   const { user: currentUser, isLoading: userLoading } = useUser();
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
-  const [stories, setStories] = useState<Story[]>(mockStories);
+  const [posts, setPosts] = useState<Post[]>(mockPosts || []);
+  const [stories, setStories] = useState<Story[]>(mockStories || []);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollY = useSharedValue(0);
 
-  // Don't render until user data is loaded
-  if (userLoading || !currentUser) {
+  // Show loading state until user data is ready
+  if (userLoading) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6C5CE7" />
         <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  // Don't render if no user data
+  if (!currentUser) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Please log in to continue</Text>
       </View>
     );
   }
@@ -50,44 +61,69 @@ export default function FeedScreen() {
   });
 
   const handleLike = (postId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setPosts(prevPosts =>
-      prevPosts.map(post =>
-        post.id === postId
-          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-          : post
-      )
-    );
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Error handling like:', error);
+    }
   };
 
   const handleComment = (postId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert('Comments', `Opening comments for post ${postId}`);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // TODO: Implement comment functionality
+    } catch (error) {
+      console.error('Error handling comment:', error);
+    }
   };
 
   const handleShare = (postId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert('Share', `Sharing post ${postId}`);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // TODO: Implement share functionality
+    } catch (error) {
+      console.error('Error handling share:', error);
+    }
   };
 
   const handleAddStory = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Add Story', 'Camera functionality would open here');
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // TODO: Implement add story functionality
+    } catch (error) {
+      console.error('Error handling add story:', error);
+    }
   };
 
   const handleStoryPress = (story: Story) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Story', `Viewing ${story.user.username}'s story`);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // TODO: Implement story view functionality
+    } catch (error) {
+      console.error('Error handling story press:', error);
+    }
   };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    // Simulate refresh delay
-    setTimeout(() => {
+    try {
+      setIsRefreshing(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
+      // Simulate refresh delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       setIsRefreshing(false);
-    }, 1000);
+    } catch (error) {
+      console.error('Error during refresh:', error);
+      setIsRefreshing(false);
+    }
   };
 
   const renderHeader = () => (
@@ -100,24 +136,12 @@ export default function FeedScreen() {
   );
 
   const renderPost = ({ item, index }: { item: Post; index: number }) => {
+    if (!item) return null;
+    
     return (
       <Animated.View
         entering={withSpring}
-        style={[
-          styles.postWrapper,
-          {
-            transform: [
-              {
-                scale: interpolate(
-                  scrollY.value,
-                  [(index - 1) * 500, index * 500, (index + 1) * 500],
-                  [0.95, 1, 0.95],
-                  'clamp'
-                )
-              }
-            ]
-          }
-        ]}
+        style={styles.postWrapper}
       >
         <PostCard
           post={item}
@@ -154,7 +178,7 @@ export default function FeedScreen() {
         <AnimatedFlatList
           data={posts}
           renderItem={renderPost}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item?.id || Math.random().toString()}
           ListHeaderComponent={renderHeader}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
@@ -206,6 +230,7 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#FFFFFF',
     fontSize: 16,
+    marginTop: 12,
   },
   postWrapper: {
     marginBottom: 8,

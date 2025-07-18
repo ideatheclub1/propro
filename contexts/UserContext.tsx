@@ -53,7 +53,7 @@ const userReducer = (state: UserState, action: UserAction): UserState => {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Default user data as fallback
+// Safe default user data
 const getDefaultUser = (): User => ({
   id: '1',
   username: 'luna_mystic',
@@ -68,6 +68,17 @@ const getDefaultUser = (): User => ({
   isFollowing: false,
 });
 
+// Validate user data structure
+const isValidUser = (data: any): data is User => {
+  return (
+    data &&
+    typeof data === 'object' &&
+    typeof data.id === 'string' &&
+    typeof data.username === 'string' &&
+    typeof data.avatar === 'string'
+  );
+};
+
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(userReducer, initialState);
 
@@ -80,34 +91,28 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
-      const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
+      const storedUserData = await AsyncStorage.getItem(USER_STORAGE_KEY);
       
-      if (storedUser) {
+      if (storedUserData && storedUserData !== 'null' && storedUserData !== 'undefined') {
         try {
-          const parsedUser = JSON.parse(storedUser);
-          // Validate that required fields exist
-          if (parsedUser && typeof parsedUser === 'object' && parsedUser.id) {
+          const parsedUser = JSON.parse(storedUserData);
+          
+          if (isValidUser(parsedUser)) {
             dispatch({ type: 'SET_USER', payload: parsedUser });
-          } else {
-            // Invalid stored data, use default
-            const defaultUser = getDefaultUser();
-            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
-            dispatch({ type: 'SET_USER', payload: defaultUser });
+            return;
           }
         } catch (parseError) {
           console.error('Error parsing stored user data:', parseError);
-          // Corrupted data, use default
-          const defaultUser = getDefaultUser();
-          await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
-          dispatch({ type: 'SET_USER', payload: defaultUser });
         }
-      } else {
-        // No stored user, not authenticated
-        dispatch({ type: 'SET_USER', payload: null });
       }
+      
+      // No valid stored user data
+      dispatch({ type: 'SET_USER', payload: null });
+      
     } catch (error) {
       console.error('Error loading user data:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data' });
+      dispatch({ type: 'SET_USER', payload: null });
     }
   };
 
@@ -116,23 +121,29 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
 
-      // Simulate login validation
+      // Validate input
       if (!email?.trim() || !password?.trim()) {
         dispatch({ type: 'SET_ERROR', payload: 'Email and password are required' });
         return false;
       }
 
       // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Create user data (in real app, this would come from API)
+      // Create safe user data
       const userData = getDefaultUser();
       
-      // Store user data
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-      dispatch({ type: 'SET_USER', payload: userData });
+      // Store user data safely
+      try {
+        await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+        dispatch({ type: 'SET_USER', payload: userData });
+        return true;
+      } catch (storageError) {
+        console.error('Failed to store user data:', storageError);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to save login data' });
+        return false;
+      }
       
-      return true;
     } catch (error) {
       console.error('Login error:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Login failed. Please try again.' });
@@ -155,8 +166,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!state.user) return;
       
       const updatedUser = { ...state.user, ...userData };
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
-      dispatch({ type: 'SET_USER', payload: updatedUser });
+      
+      if (isValidUser(updatedUser)) {
+        await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+        dispatch({ type: 'SET_USER', payload: updatedUser });
+      }
     } catch (error) {
       console.error('Update user error:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to update user data' });

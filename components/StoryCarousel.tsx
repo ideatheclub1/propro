@@ -61,7 +61,13 @@ export default function StoryCarousel({
 
   // Don't render if no current user
   if (!currentUser) {
-    return null;
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Loading stories...</Text>
+        </View>
+      </View>
+    );
   }
 
   const StoryItem = ({ story, isAddStory = false }: { story?: Story; isAddStory?: boolean }) => {
@@ -79,7 +85,11 @@ export default function StoryCarousel({
     }, [isAddStory]);
 
     const handlePressIn = () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+        console.error('Haptics error:', error);
+      }
       scale.value = withSpring(0.95);
     };
 
@@ -88,7 +98,11 @@ export default function StoryCarousel({
     };
 
     const handlePress = () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (error) {
+        console.error('Haptics error:', error);
+      }
       if (isAddStory) {
         onAddStory();
       } else if (story) {
@@ -116,7 +130,9 @@ export default function StoryCarousel({
           <Animated.View style={[styles.addStoryBorder, ringAnimatedStyle]}>
             <View style={styles.addStoryImageContainer}>
               <Image 
-                source={{ uri: currentUser?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+                source={{ 
+                  uri: currentUser?.avatar ?? 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' 
+                }} 
                 style={styles.addStoryImage} 
               />
               <LinearGradient
@@ -132,7 +148,7 @@ export default function StoryCarousel({
       );
     }
 
-    if (!story?.user) {
+    if (!story || !story.user) {
       return null;
     }
 
@@ -150,7 +166,9 @@ export default function StoryCarousel({
           >
             <View style={styles.storyImageContainer}>
               <Image 
-                source={{ uri: story?.user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+                source={{ 
+                  uri: story?.user?.avatar ?? 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' 
+                }} 
                 style={styles.storyImage} 
               />
             </View>
@@ -158,7 +176,7 @@ export default function StoryCarousel({
         </Animated.View>
         <TouchableOpacity onPress={() => handleUserPress(story?.user?.id || '')}>
           <Text style={styles.storyUsername} numberOfLines={1}>
-            {story?.user?.username || 'Guest'}
+            {story?.user?.username ?? 'Guest'}
           </Text>
         </TouchableOpacity>
       </AnimatedTouchableOpacity>
@@ -179,8 +197,8 @@ export default function StoryCarousel({
         <StoryItem isAddStory />
 
         {/* Stories */}
-        {stories?.filter(story => story?.user).map((story) => (
-          <StoryItem key={story.id} story={story} />
+        {stories?.filter(story => story && story.user).map((story) => (
+          <StoryItem key={story?.id || Math.random().toString()} story={story} />
         ))}
         
         {/* Spacer for half-visible next item */}
@@ -198,6 +216,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1E1E',
     paddingTop: 16,
     paddingBottom: 12,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  emptyText: {
+    color: '#B0B0B0',
+    fontSize: 14,
   },
   scrollContent: {
     paddingHorizontal: 16,

@@ -33,6 +33,8 @@ export default function UserCard({ user, onFollow, onPress }: UserCardProps) {
   };
 
   const handleUserPress = () => {
+    if (!user?.id) return;
+    
     if (user.id === '1') {
       Alert.alert(
         'Your Profile',
@@ -47,7 +49,6 @@ export default function UserCard({ user, onFollow, onPress }: UserCardProps) {
       );
       return;
     }
-    if (!user?.id) return;
     router.push({
       pathname: '/ProfileScreen',
       params: { userId: user.id }
@@ -62,7 +63,9 @@ export default function UserCard({ user, onFollow, onPress }: UserCardProps) {
       >
         <View style={styles.avatarContainer}>
           <Image 
-            source={{ uri: user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+            source={{ 
+              uri: user?.avatar ?? 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' 
+            }} 
             style={styles.avatar} 
           />
           {user?.isHost && (
@@ -72,12 +75,12 @@ export default function UserCard({ user, onFollow, onPress }: UserCardProps) {
           )}
         </View>
         <View style={styles.userInfo}>
-          <Text style={styles.username}>{user?.username || 'Guest'}</Text>
+          <Text style={styles.username}>{user?.username ?? 'Guest'}</Text>
           {user?.bio && <Text style={styles.bio}>{user.bio}</Text>}
           {user?.isHost && user?.hourlyRate && (
             <View style={styles.rateContainer}>
               <DollarSign size={14} color="#ffd700" />
-              <Text style={styles.rateText}>${user?.hourlyRate || 0}/hr</Text>
+              <Text style={styles.rateText}>${user?.hourlyRate ?? 0}/hr</Text>
             </View>
           )}
         </View>
