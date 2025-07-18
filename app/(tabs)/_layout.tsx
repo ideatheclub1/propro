@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
   interpolate,
 } from 'react-native-reanimated';
+import { useUser } from '@/contexts/UserContext';
 
 const AnimatedTabs = Animated.createAnimatedComponent(Tabs);
 
@@ -45,6 +46,13 @@ const TabIcon = ({ IconComponent, size, color, isActive }: any) => {
 };
 
 export default function TabLayout() {
+  const { user, isLoading } = useUser();
+
+  // Don't render tabs until user is loaded
+  if (isLoading || !user) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={{

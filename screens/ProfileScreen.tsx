@@ -32,8 +32,7 @@ import { mockUsers, mockPosts } from '../data/mockData';
 import { Post, User } from '../types';
 import FullScreenPostViewer from '../components/FullScreenPostViewer';
 import BulletinBoardSection from '../components/BulletinBoardSection';
-import CoverPhotoModal from '../components/CoverPhotoModal';
-import NotificationPanel from '../components/NotificationPanel';
+import { useUser } from '@/contexts/UserContext';
 
 const { width, height } = Dimensions.get('window');
 const imageSize = (width - 56) / 3;
@@ -52,26 +51,27 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
   const params = useLocalSearchParams<{ userId: string }>();
+  const { user: currentUser } = useUser();
   
   const userId = route?.params?.userId || params?.userId || '1';
   const actualUserId = userId === 'me' ? '1' : userId;
-  const isCurrentUser = actualUserId === '1';
+  const isCurrentUser = actualUserId === currentUser?.id;
   
   const [user, setUser] = useState<User>(() => {
+    if (isCurrentUser && currentUser) {
+      return currentUser;
+    }
     const foundUser = mockUsers.find(u => u.id === actualUserId);
-    return foundUser || mockUsers[0];
+    return foundUser || currentUser || mockUsers[0];
   });
   
   const [userPosts, setUserPosts] = useState<Post[]>(
-    mockPosts.filter(post => post.user.id === actualUserId)
+    mockPosts.filter(post => post?.user?.id === actualUserId)
   );
   const [isFollowing, setIsFollowing] = useState(user.isFollowing || false);
   const [showFullScreenPost, setShowFullScreenPost] = useState(false);
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [coverImage, setCoverImage] = useState('https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=800');
-  const [showCoverModal, setShowCoverModal] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
 
   // Animation values
   const scrollY = useSharedValue(0);
@@ -132,18 +132,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
   };
 
   const handleMessages = () => {
-    router.push('/messages');
-  };
-
-  const handleUploadCover = () => {
-    setShowCoverModal(true);
-  };
-
-  const handleCoverImageSelected = (imageUri: string) => {
-    coverFade.value = withTiming(0, { duration: 300 }, () => {
-      runOnJS(setCoverImage)(imageUri);
-      coverFade.value = withTiming(1, { duration: 600 });
-    });
+    router.push('/(tabs)/messages');
   };
 
   const handlePostPress = (post: Post) => {
@@ -170,25 +159,14 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
     Alert.alert('Comment', 'Comment functionality would be implemented here');
   };
 
-  const handleNotificationPress = () => {
-    setShowNotifications(true);
-  };
-
-  const handleNotificationItemPress = (notification: any) => {
-    console.log('Notification pressed:', notification);
-  };
-
-  const handleMarkAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notificationId ? { ...n, isRead: true } : n
-      )
+  // Don't render if no user data
+  if (!user || !currentUser) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
     );
-  };
-
-  const handleDeleteNotification = (notificationId: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-  };
+  }
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => {
@@ -328,17 +306,9 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
             <ArrowLeft size={22} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={[styles.miniHeaderTitle, { fontFamily: 'Inter_600SemiBold' }]}>
-            {user.username}
+            {user?.username || 'Profile'}
           </Text>
           <View style={styles.headerRight}>
-            <Animated.View style={notificationAnimatedStyle}>
-              <TouchableOpacity style={styles.headerIcon} onPress={handleNotificationPress}>
-                <Bell size={20} color="#FFFFFF" />
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationText}>2</Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
             <TouchableOpacity onPress={handleMessages} style={styles.headerIcon}>
               <MessageCircle size={20} color="#FFFFFF" />
             </TouchableOpacity>
@@ -365,16 +335,6 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
                 colors={['transparent', 'rgba(30, 30, 30, 0.8)']}
                 style={styles.coverGradient}
               />
-              {isCurrentUser && (
-                <TouchableOpacity
-                  style={styles.coverEditButton}
-                  onPress={handleUploadCover}
-                >
-                  <BlurView intensity={30} style={styles.coverEditBlur}>
-                    <Camera size={18} color="#FFFFFF" />
-                  </BlurView>
-                </TouchableOpacity>
-              )}
             </ImageBackground>
           </Animated.View>
         </View>
@@ -384,34 +344,34 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
           {/* Professional Profile Image */}
           <Animated.View style={[styles.profileImageContainer, profileImageAnimatedStyle]}>
             <View style={styles.profileImageWrapper}>
-              <Image source={{ uri: user.avatar }} style={styles.profileImage} />
-              {user.isHost && (
+              <Image source={{ uri: user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} style={styles.profileImage} />
+              {user?.isHost && (
                 <View style={styles.crownBadge}>
                   <Crown size={18} color="#6C5CE7" fill="#6C5CE7" />
                 </View>
               )}
-              {user.isHost && <View style={styles.premiumGlow} />}
+              {user?.isHost && <View style={styles.premiumGlow} />}
             </View>
           </Animated.View>
 
           {/* Clean Typography */}
           <View style={styles.userInfo}>
             <Text style={[styles.username, { fontFamily: 'Inter_700Bold' }]}>
-              {user.username}
+              {user?.username || 'Guest User'}
             </Text>
             
             <View style={styles.locationContainer}>
               <MapPin size={16} color="#B0B0B0" />
               <Text style={[styles.locationText, { fontFamily: 'Inter_400Regular' }]}>
-                {user.location}
+                {user?.location || 'Unknown Location'}
               </Text>
               <Text style={[styles.ageText, { fontFamily: 'Inter_400Regular' }]}>
-                • {user.age}
+                • {user?.age || '??'}
               </Text>
             </View>
             
             <Text style={[styles.bio, { fontFamily: 'Inter_400Regular' }]}>
-              {user.bio}
+              {user?.bio || 'No bio available'}
             </Text>
           </View>
 
@@ -438,7 +398,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
           </View>
 
           {/* Professional Rating */}
-          {user.isHost && (
+          {user?.isHost && (
             <View style={styles.ratingSection}>
               <View style={styles.starsContainer}>
                 {renderStars(4.8)}
@@ -529,7 +489,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
                 No posts yet
               </Text>
               <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
-                {isCurrentUser ? 'Share your creative work' : `${user.username} hasn't posted yet`}
+                {isCurrentUser ? 'Share your creative work' : `${user?.username || 'User'} hasn't posted yet`}
               </Text>
             </View>
           )}
@@ -544,23 +504,6 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
         onClose={() => setShowFullScreenPost(false)}
         onLike={handleLike}
         onComment={handleComment}
-      />
-
-      {/* Cover Photo Modal */}
-      <CoverPhotoModal
-        visible={showCoverModal}
-        onClose={() => setShowCoverModal(false)}
-        onImageSelected={handleCoverImageSelected}
-      />
-
-      {/* Notification Panel */}
-      <NotificationPanel
-        visible={showNotifications}
-        onClose={() => setShowNotifications(false)}
-        notifications={notifications}
-        onNotificationPress={handleNotificationItemPress}
-        onMarkAsRead={handleMarkAsRead}
-        onDeleteNotification={handleDeleteNotification}
       />
     </View>
   );

@@ -22,16 +22,26 @@ import StoryCarousel from '../components/StoryCarousel';
 import PostCard from '../components/PostCard';
 import { mockPosts, mockStories, mockUsers } from '../data/mockData';
 import { Post, Story } from '../types';
+import { useUser } from '@/contexts/UserContext';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 export default function FeedScreen() {
   const router = useRouter();
+  const { user: currentUser, isLoading: userLoading } = useUser();
   const [posts, setPosts] = useState<Post[]>(mockPosts);
   const [stories, setStories] = useState<Story[]>(mockStories);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const currentUser = mockUsers[0];
   const scrollY = useSharedValue(0);
+
+  // Don't render until user data is loaded
+  if (userLoading || !currentUser) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -186,6 +196,16 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E1E1E',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
   },
   postWrapper: {
     marginBottom: 8,

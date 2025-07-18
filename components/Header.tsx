@@ -17,6 +17,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useUser } from '@/contexts/UserContext';
 
 interface HeaderProps {
   onMessagesPress?: () => void;
@@ -26,9 +27,15 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 
 export default function Header({ onMessagesPress }: HeaderProps) {
   const router = useRouter();
+  const { user } = useUser();
   const logoGlow = useSharedValue(0);
   const messageScale = useSharedValue(1);
   const [unreadCount] = useState(3);
+
+  // Don't render if no user data
+  if (!user) {
+    return null;
+  }
 
   React.useEffect(() => {
     logoGlow.value = withRepeat(

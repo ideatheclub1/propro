@@ -21,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import { Heart, MessageCircle, Share2, TrendingUp } from 'lucide-react-native';
 import { Post } from '../types';
 import { useComments } from '../contexts/CommentContext';
+import { useUser } from '@/contexts/UserContext';
 
 interface PostCardProps {
   post: Post;
@@ -34,6 +35,7 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 
 export default function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
   const router = useRouter();
+  const { user: currentUser } = useUser();
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [likes, setLikes] = useState(post.likes);
   const { getCommentCount } = useComments();
@@ -96,10 +98,11 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
 
   const handleUserPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (post.user.id === '1') {
+    if (post?.user?.id === currentUser?.id) {
       router.push('/(tabs)/profile');
       return;
     }
+    if (!post?.user?.id) return;
     router.push({
       pathname: '/ProfileScreen',
       params: { userId: post.user.id }
@@ -178,10 +181,13 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
           {/* User Info - Bottom Left */}
           <View style={styles.userSection}>
             <TouchableOpacity style={styles.userInfo} onPress={handleUserPress}>
-              <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
+              <Image 
+                source={{ uri: post?.user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+                style={styles.avatar} 
+              />
               <View style={styles.userDetails}>
-                <Text style={styles.username}>@{post.user.username}</Text>
-                <Text style={styles.timestamp}>{post.timestamp}</Text>
+                <Text style={styles.username}>@{post?.user?.username || 'Guest'}</Text>
+                <Text style={styles.timestamp}>{post?.timestamp || 'Just now'}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -233,8 +239,8 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
           {/* Caption */}
           <View style={styles.captionContainer}>
             <Text style={styles.caption}>
-              <Text style={styles.captionUsername}>@{post.user.username}</Text>
-              <Text style={styles.captionText}> {post.content}</Text>
+              <Text style={styles.captionUsername}>@{post?.user?.username || 'Guest'}</Text>
+              <Text style={styles.captionText}> {post?.content || ''}</Text>
             </Text>
           </View>
 

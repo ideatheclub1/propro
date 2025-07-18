@@ -24,6 +24,7 @@ import Animated, {
 import { Mail, Lock, Eye, EyeOff, Flame, Phone, ArrowRight, Camera, User, Calendar, Shield, Check, X, ChevronDown, ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { useUser } from '@/contexts/UserContext';
 
 type RegistrationStep = 
   | 'login' 
@@ -55,6 +56,7 @@ interface RegistrationData {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login: userLogin, isLoading } = useUser();
   const [isSignIn, setIsSignIn] = useState(true);
   const [currentStep, setCurrentStep] = useState<RegistrationStep>('login');
   const [email, setEmail] = useState('');
@@ -137,13 +139,13 @@ export default function LoginScreen() {
     return age;
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email address');
       return;
     }
 
-    if (!validateEmail(email)) {
+    if (!validateEmail(email.trim())) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
@@ -158,11 +160,21 @@ export default function LoginScreen() {
       return;
     }
 
-    // Log form data
-    console.log('Login Data:', { email, password, mode: isSignIn ? 'Sign In' : 'Join Club' });
-
-    // Navigate to main app (tabs)
-    router.replace('/(tabs)');
+    try {
+      const success = await userLogin(email.trim(), password);
+      
+      if (success) {
+        // Safe navigation with slight delay to ensure context updates
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 100);
+      } else {
+        Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Error', 'An error occurred during login. Please try again.');
+    }
   };
 
   const handleJoinUpToggle = () => {
@@ -318,7 +330,10 @@ export default function LoginScreen() {
 
   const handleRegistrationComplete = () => {
     console.log('Registration Complete:', registrationData);
-    router.replace('/(tabs)');
+    // For registration, we'll also need to handle user creation
+    setTimeout(() => {
+      router.replace('/(tabs)');
+    }, 100);
   };
 
   const handleBack = () => {
@@ -439,15 +454,16 @@ export default function LoginScreen() {
 
         {/* Action Button */}
         <TouchableOpacity 
-          style={styles.signInButton} 
+          style={[styles.signInButton, isLoading && styles.disabledButton]} 
           onPress={isSignIn ? handleLogin : handleStartRegistration}
+          disabled={isLoading}
         >
           <LinearGradient
-            colors={['#8b5cf6', '#a855f7', '#9333ea']}
+            colors={isLoading ? ['#4A4A4A', '#565656'] : ['#6C5CE7', '#5A4FCF']}
             style={styles.signInButtonGradient}
           >
             <Text style={styles.signInButtonText}>
-              {isSignIn ? 'Sign In' : 'Join Up'}
+              {isLoading ? 'Signing In...' : (isSignIn ? 'Sign In' : 'Join Up')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -951,6 +967,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
+  disabledButton: {
+    opacity: 0.6,
+  },
   moonContainer: {
     alignItems: 'center',
     marginBottom: 40,
@@ -980,17 +999,17 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#e0aaff',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   welcomeSubtitle: {
     fontSize: 16,
-    color: '#a855f7',
+    color: '#B0B0B0',
     opacity: 0.8,
   },
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    backgroundColor: 'rgba(108, 92, 231, 0.1)',
     borderRadius: 25,
     padding: 4,
     marginBottom: 30,
@@ -1002,11 +1021,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   activeToggle: {
-    backgroundColor: '#c77dff',
+    backgroundColor: '#6C5CE7',
   },
   toggleText: {
     fontSize: 16,
-    color: '#a855f7',
+    color: '#B0B0B0',
     fontWeight: '600',
   },
   activeToggleText: {
@@ -1018,10 +1037,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    backgroundColor: 'rgba(108, 92, 231, 0.1)',
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
+    borderColor: 'rgba(108, 92, 231, 0.3)',
     paddingHorizontal: 15,
     marginBottom: 16,
   },
@@ -1086,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: '#a855f7',
+    color: '#B0B0B0',
     textAlign: 'center',
     opacity: 0.8,
   },
@@ -1119,13 +1138,13 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#e0aaff',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 12,
   },
   stepSubtitle: {
     fontSize: 16,
-    color: '#a855f7',
+    color: '#B0B0B0',
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 22,
@@ -1154,10 +1173,10 @@ const styles = StyleSheet.create({
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    backgroundColor: 'rgba(108, 92, 231, 0.1)',
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
+    borderColor: 'rgba(108, 92, 231, 0.3)',
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
@@ -1173,20 +1192,20 @@ const styles = StyleSheet.create({
   },
   optionDescription: {
     fontSize: 14,
-    color: '#a855f7',
+    color: '#B0B0B0',
     opacity: 0.8,
   },
   googleIcon: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#a855f7',
+    color: '#6C5CE7',
     width: 24,
     textAlign: 'center',
   },
   googleIconLarge: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#a855f7',
+    color: '#6C5CE7',
   },
   otpContainer: {
     alignItems: 'center',

@@ -29,6 +29,7 @@ import { Heart, MessageCircle, Share2, Bookmark, Music, Volume2, VolumeX, Play, 
 import { Reel } from '../data/mockReels';
 import { useComments } from '../contexts/CommentContext';
 import CommentSystem from './CommentSystem';
+import { useUser } from '@/contexts/UserContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -52,6 +53,7 @@ export default function ReelItem({
   onShare,
 }: ReelItemProps) {
   const router = useRouter();
+  const { user: currentUser } = useUser();
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -95,7 +97,7 @@ export default function ReelItem({
   }, [isActive]);
 
   const handleUserPress = () => {
-    if (reel.user.id === '1') {
+    if (reel?.user?.id === currentUser?.id) {
       Alert.alert(
         'Your Profile',
         'You are viewing your own profile.',
@@ -105,6 +107,7 @@ export default function ReelItem({
         ]
       );
     } else {
+      if (!reel?.user?.id) return;
       router.push({
         pathname: '/ProfileScreen',
         params: { userId: reel.user.id }
@@ -377,10 +380,13 @@ export default function ReelItem({
             {/* User info - Bottom left */}
             <View style={styles.userInfoContainer}>
               <TouchableOpacity onPress={handleUserPress} style={styles.userInfo}>
-                <Image source={{ uri: reel.user.avatar }} style={styles.avatar} />
+                <Image 
+                  source={{ uri: reel?.user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+                  style={styles.avatar} 
+                />
                 <View style={styles.userDetails}>
-                  <Text style={styles.username}>@{reel.user.username}</Text>
-                  <Text style={styles.timestamp}>{reel.timestamp}</Text>
+                  <Text style={styles.username}>@{reel?.user?.username || 'Guest'}</Text>
+                  <Text style={styles.timestamp}>{reel?.timestamp || 'Just now'}</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -388,7 +394,7 @@ export default function ReelItem({
             {/* Caption and hashtags */}
             <View style={styles.captionContainer}>
               <Text style={styles.caption} numberOfLines={2}>
-                {reel.caption}
+                {reel?.caption || ''}
               </Text>
               
               {/* Hashtags */}
@@ -398,20 +404,20 @@ export default function ReelItem({
                 style={styles.hashtagScroll}
                 contentContainerStyle={styles.hashtagContainer}
               >
-                {reel.hashtags.map((hashtag, index) => (
+                {reel?.hashtags?.map((hashtag, index) => (
                   <TouchableOpacity key={index} style={styles.hashtag}>
                     <Text style={styles.hashtagText}>{hashtag}</Text>
                   </TouchableOpacity>
-                ))}
+                )) || []}
               </ScrollView>
             </View>
 
             {/* Music info overlay */}
-            {showMusicInfo && reel.musicInfo && (
+            {showMusicInfo && reel?.musicInfo && (
               <View style={styles.musicInfoOverlay}>
                 <Music size={16} color="#FFFFFF" />
                 <Text style={styles.musicText} numberOfLines={1}>
-                  {reel.musicInfo.title} • {reel.musicInfo.artist}
+                  {reel?.musicInfo?.title || 'Unknown'} • {reel?.musicInfo?.artist || 'Artist'}
                 </Text>
               </View>
             )}

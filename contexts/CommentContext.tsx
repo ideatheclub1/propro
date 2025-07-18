@@ -226,8 +226,19 @@ export const CommentProvider: React.FC<{ children: ReactNode }> = ({ children })
       const storedComments = await AsyncStorage.getItem(STORAGE_KEY);
       
       if (storedComments) {
-        const parsedComments = JSON.parse(storedComments);
-        dispatch({ type: 'SET_COMMENTS', payload: parsedComments });
+        try {
+          const parsedComments = JSON.parse(storedComments);
+          // Validate the parsed data structure
+          if (parsedComments && typeof parsedComments === 'object') {
+            dispatch({ type: 'SET_COMMENTS', payload: parsedComments });
+          } else {
+            // Invalid data structure, use mock data
+            dispatch({ type: 'SET_COMMENTS', payload: mockComments });
+          }
+        } catch (parseError) {
+          console.error('Error parsing comments:', parseError);
+          dispatch({ type: 'SET_COMMENTS', payload: mockComments });
+        }
       } else {
         // Initialize with mock data if no stored comments
         dispatch({ type: 'SET_COMMENTS', payload: mockComments });
@@ -247,12 +258,18 @@ export const CommentProvider: React.FC<{ children: ReactNode }> = ({ children })
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state.comments));
     } catch (error) {
       console.error('Error saving comments:', error);
+      // Don't throw error, just log it
     }
   };
 
   const addComment = async (postId: string, postType: 'feed' | 'reel', content: string, parentId?: string) => {
     try {
-      const currentUser = mockUsers[0]; // Current user (luna_mystic)
+      // Use the first mock user as fallback
+      const currentUser = mockUsers[0];
+      if (!currentUser || !content?.trim()) {
+        return;
+      }
+
       const newComment: Comment = {
         id: `c${Date.now()}`,
         postId,

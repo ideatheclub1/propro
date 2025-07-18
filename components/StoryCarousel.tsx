@@ -21,10 +21,10 @@ import * as Haptics from 'expo-haptics';
 import { Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Story, User } from '../types';
+import { useUser } from '@/contexts/UserContext';
 
 interface StoryCarouselProps {
   stories: Story[];
-  currentUser: User;
   onAddStory: () => void;
   onStoryPress: (story: Story) => void;
 }
@@ -33,15 +33,15 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 
 export default function StoryCarousel({
   stories,
-  currentUser,
   onAddStory,
   onStoryPress,
 }: StoryCarouselProps) {
   const router = useRouter();
+  const { user: currentUser } = useUser();
 
   const handleUserPress = (userId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (userId === currentUser.id) {
+    if (userId === currentUser?.id) {
       Alert.alert(
         'Your Profile',
         'You are viewing your own profile. To make changes, go to your settings.',
@@ -52,11 +52,17 @@ export default function StoryCarousel({
       );
       return;
     }
+    if (!userId) return;
     router.push({
       pathname: '/ProfileScreen',
       params: { userId }
     });
   };
+
+  // Don't render if no current user
+  if (!currentUser) {
+    return null;
+  }
 
   const StoryItem = ({ story, isAddStory = false }: { story?: Story; isAddStory?: boolean }) => {
     const scale = useSharedValue(1);
@@ -109,7 +115,10 @@ export default function StoryCarousel({
         >
           <Animated.View style={[styles.addStoryBorder, ringAnimatedStyle]}>
             <View style={styles.addStoryImageContainer}>
-              <Image source={{ uri: currentUser.avatar }} style={styles.addStoryImage} />
+              <Image 
+                source={{ uri: currentUser?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+                style={styles.addStoryImage} 
+              />
               <LinearGradient
                 colors={['#6C5CE7', '#8B5CF6']}
                 style={styles.addButton}
@@ -121,6 +130,10 @@ export default function StoryCarousel({
           <Text style={styles.storyUsername}>Your Story</Text>
         </AnimatedTouchableOpacity>
       );
+    }
+
+    if (!story?.user) {
+      return null;
     }
 
     return (
@@ -136,13 +149,16 @@ export default function StoryCarousel({
             style={styles.storyGradientBorder}
           >
             <View style={styles.storyImageContainer}>
-              <Image source={{ uri: story!.user.avatar }} style={styles.storyImage} />
+              <Image 
+                source={{ uri: story?.user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+                style={styles.storyImage} 
+              />
             </View>
           </LinearGradient>
         </Animated.View>
-        <TouchableOpacity onPress={() => handleUserPress(story!.user.id)}>
+        <TouchableOpacity onPress={() => handleUserPress(story?.user?.id || '')}>
           <Text style={styles.storyUsername} numberOfLines={1}>
-            {story!.user.username}
+            {story?.user?.username || 'Guest'}
           </Text>
         </TouchableOpacity>
       </AnimatedTouchableOpacity>
@@ -163,7 +179,7 @@ export default function StoryCarousel({
         <StoryItem isAddStory />
 
         {/* Stories */}
-        {stories.map((story) => (
+        {stories?.filter(story => story?.user).map((story) => (
           <StoryItem key={story.id} story={story} />
         ))}
         

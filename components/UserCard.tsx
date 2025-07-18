@@ -22,6 +22,11 @@ export default function UserCard({ user, onFollow, onPress }: UserCardProps) {
   const router = useRouter();
   const [isFollowing, setIsFollowing] = React.useState(user.isFollowing || false);
 
+  // Don't render if no user data
+  if (!user) {
+    return null;
+  }
+
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
     onFollow(user.id);
@@ -42,6 +47,7 @@ export default function UserCard({ user, onFollow, onPress }: UserCardProps) {
       );
       return;
     }
+    if (!user?.id) return;
     router.push({
       pathname: '/ProfileScreen',
       params: { userId: user.id }
@@ -55,20 +61,23 @@ export default function UserCard({ user, onFollow, onPress }: UserCardProps) {
         style={styles.container}
       >
         <View style={styles.avatarContainer}>
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
-          {user.isHost && (
+          <Image 
+            source={{ uri: user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
+            style={styles.avatar} 
+          />
+          {user?.isHost && (
             <View style={styles.hostBadge}>
               <Crown size={12} color="#ffd700" />
             </View>
           )}
         </View>
         <View style={styles.userInfo}>
-          <Text style={styles.username}>{user.username}</Text>
-          {user.bio && <Text style={styles.bio}>{user.bio}</Text>}
-          {user.isHost && user.hourlyRate && (
+          <Text style={styles.username}>{user?.username || 'Guest'}</Text>
+          {user?.bio && <Text style={styles.bio}>{user.bio}</Text>}
+          {user?.isHost && user?.hourlyRate && (
             <View style={styles.rateContainer}>
               <DollarSign size={14} color="#ffd700" />
-              <Text style={styles.rateText}>${user.hourlyRate}/hr</Text>
+              <Text style={styles.rateText}>${user?.hourlyRate || 0}/hr</Text>
             </View>
           )}
         </View>
