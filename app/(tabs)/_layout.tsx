@@ -148,6 +148,7 @@ export default function TabLayout() {
         name="messages"
         options={{
           href: null, // Hide from tab bar since it's accessible via header
+          tabBarIcon: () => null,
         }}
       />
     </Tabs>
