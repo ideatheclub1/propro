@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,11 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  Platform,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -21,10 +24,15 @@ import Animated, {
   withSpring,
   withTiming,
   interpolate,
+  withSequence,
+  withRepeat,
   runOnJS,
+  FadeIn,
+  FadeInDown,
+  SlideInRight,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Heart, MessageCircle, Share2, Play, TrendingUp } from 'lucide-react-native';
+import { Heart, MessageCircle, Share2, Play, TrendingUp, Eye, Clock } from 'lucide-react-native';
 import { mockPosts, mockStories } from '../data/mockData';
 import { Post, Story } from '../types';
 import { useComments } from '../contexts/CommentContext';
@@ -35,8 +43,9 @@ import CommentSystem from '../components/CommentSystem';
 const { width, height } = Dimensions.get('window');
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
+const AnimatedImageBackground = Animated.createAnimatedComponent(ImageBackground);
 
-// Mock shorts data
+// Mock shorts data with enhanced details
 const mockShorts = [
   {
     id: 's1',
@@ -44,6 +53,8 @@ const mockShorts = [
     duration: '0:45',
     views: '2.1M',
     title: 'Night City Vibes',
+    isNew: true,
+    creator: 'luna_mystic',
   },
   {
     id: 's2',
@@ -51,6 +62,8 @@ const mockShorts = [
     duration: '1:12',
     views: '856K',
     title: 'Creative Process',
+    isNew: false,
+    creator: 'neon_dreamer',
   },
   {
     id: 's3',
@@ -58,6 +71,8 @@ const mockShorts = [
     duration: '0:28',
     views: '1.5M',
     title: 'Purple Dreams',
+    isNew: true,
+    creator: 'purple_vibes',
   },
   {
     id: 's4',
@@ -65,6 +80,17 @@ const mockShorts = [
     duration: '0:55',
     views: '923K',
     title: 'Aesthetic Mood',
+    isNew: false,
+    creator: 'cosmic_soul',
+  },
+  {
+    id: 's5',
+    thumbnail: 'https://images.pexels.com/photos/1181276/pexels-photo-1181276.jpeg?auto=compress&cs=tinysrgb&w=400',
+    duration: '1:33',
+    views: '3.2M',
+    title: 'AI Revolution',
+    isNew: true,
+    creator: 'cyber_punk',
   },
 ];
 
@@ -81,16 +107,27 @@ export default function FeedScreen() {
   // Animation values
   const scrollY = useSharedValue(0);
   const headerOpacity = useSharedValue(1);
+  const headerGlow = useSharedValue(0);
+
+  // Initialize animations
+  useEffect(() => {
+    // Header glow animation
+    headerGlow.value = withRepeat(
+      withTiming(1, { duration: 3000 }),
+      -1,
+      true
+    );
+  }, []);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
       
-      // Header fade effect
+      // Header fade effect based on scroll
       headerOpacity.value = interpolate(
         scrollY.value,
-        [0, 100],
-        [1, 0.95],
+        [0, 100, 200],
+        [1, 0.9, 0.7],
         'clamp'
       );
     },
@@ -98,15 +135,16 @@ export default function FeedScreen() {
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    // Simulate refresh
+    // Simulate refresh with haptic feedback
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
+    
     setTimeout(() => {
       setIsRefreshing(false);
-      try {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      } catch (error) {
-        console.error('Haptics error:', error);
-      }
-    }, 1000);
+    }, 1500);
   }, []);
 
   const handleLike = useCallback((postId: string) => {
@@ -203,36 +241,67 @@ export default function FeedScreen() {
     router.push('/(tabs)/reels');
   }, [router]);
 
-  // Header component
+  // Header component with smooth animations
   const Header = () => {
     const headerAnimatedStyle = useAnimatedStyle(() => ({
       opacity: headerOpacity.value,
     }));
 
+    const logoGlowStyle = useAnimatedStyle(() => ({
+      shadowOpacity: interpolate(headerGlow.value, [0, 1], [0.4, 0.8]),
+      shadowRadius: interpolate(headerGlow.value, [0, 1], [12, 20]),
+    }));
+
+    const messageButtonScale = useSharedValue(1);
+
+    const handleMessagePress = () => {
+      messageButtonScale.value = withSequence(
+        withSpring(0.9, { damping: 15 }),
+        withSpring(1, { damping: 15 })
+      );
+      handleMessagesPress();
+    };
+
+    const messageButtonStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: messageButtonScale.value }],
+    }));
+
     return (
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <View style={styles.headerContent}>
-          <View style={styles.logoContainer}>
-            <Heart size={24} color="#6C5CE7" fill="#6C5CE7" />
-            <Text style={styles.logoText}>The Club</Text>
+      <Animated.View 
+        style={[styles.header, headerAnimatedStyle]}
+        entering={FadeInDown.duration(800)}
+      >
+        <BlurView intensity={Platform.OS === 'ios' ? 20 : 0} style={styles.headerBlur}>
+          <View style={styles.headerContent}>
+            <Animated.View style={[styles.logoContainer, logoGlowStyle]}>
+              <Text style={styles.logoEmoji}>💜</Text>
+              <Text style={styles.logoText}>The Club</Text>
+            </Animated.View>
+            
+            <AnimatedTouchableOpacity 
+              onPress={handleMessagePress} 
+              style={[styles.messageButton, messageButtonStyle]}
+            >
+              <MessageCircle size={22} color="#FFFFFF" strokeWidth={2} />
+              <Animated.View 
+                style={styles.messageBadge}
+                entering={FadeIn.delay(1000)}
+              >
+                <Text style={styles.badgeText}>2</Text>
+              </Animated.View>
+            </AnimatedTouchableOpacity>
           </View>
-          
-          <TouchableOpacity onPress={handleMessagesPress} style={styles.messageButton}>
-            <MessageCircle size={24} color="#FFFFFF" strokeWidth={2} />
-            <View style={styles.messageBadge}>
-              <Text style={styles.badgeText}>2</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+        </BlurView>
       </Animated.View>
     );
   };
 
-  // Post component
+  // Enhanced Post component with smooth animations
   const PostItem = ({ post, index }: { post: Post; index: number }) => {
     const likeScale = useSharedValue(1);
     const commentScale = useSharedValue(1);
     const shareScale = useSharedValue(1);
+    const cardScale = useSharedValue(1);
     const [isLiked, setIsLiked] = useState(post.isLiked);
     const [likes, setLikes] = useState(post.likes);
 
@@ -240,25 +309,36 @@ export default function FeedScreen() {
       setIsLiked(!isLiked);
       setLikes(isLiked ? likes - 1 : likes + 1);
       
-      likeScale.value = withSpring(1.2, {}, () => {
-        likeScale.value = withSpring(1);
-      });
+      // Heart animation with bounce
+      likeScale.value = withSequence(
+        withSpring(1.3, { damping: 8 }),
+        withSpring(1, { damping: 8 })
+      );
       
       handleLike(post.id);
     };
 
     const handlePostComment = () => {
-      commentScale.value = withSpring(1.1, {}, () => {
-        commentScale.value = withSpring(1);
-      });
+      commentScale.value = withSequence(
+        withSpring(1.1, { damping: 10 }),
+        withSpring(1, { damping: 10 })
+      );
       handleComment(post.id);
     };
 
     const handlePostShare = () => {
-      shareScale.value = withSpring(1.1, {}, () => {
-        shareScale.value = withSpring(1);
-      });
+      shareScale.value = withSequence(
+        withSpring(1.1, { damping: 10 }),
+        withSpring(1, { damping: 10 })
+      );
       handleShare(post.id);
+    };
+
+    const handleCardPress = () => {
+      cardScale.value = withSequence(
+        withSpring(0.98, { damping: 15 }),
+        withSpring(1, { damping: 15 })
+      );
     };
 
     const likeAnimatedStyle = useAnimatedStyle(() => ({
@@ -273,38 +353,61 @@ export default function FeedScreen() {
       transform: [{ scale: shareScale.value }],
     }));
 
+    const cardAnimatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: cardScale.value }],
+    }));
+
     const commentCount = getCommentCount(post.id);
 
     return (
-      <View style={styles.postCard}>
-        {/* Post Image */}
-        {post.image && (
+      <Animated.View 
+        style={[styles.postCard, cardAnimatedStyle]}
+        entering={FadeInDown.delay(index * 100).springify()}
+      >
+        <TouchableOpacity 
+          activeOpacity={0.95} 
+          onPress={handleCardPress}
+        >
           <View style={styles.mediaContainer}>
-            <Image source={{ uri: post.image }} style={styles.postImage} />
-            
-            {/* Trending Badge */}
-            {post.isTrending && (
-              <View style={styles.trendingBadge}>
-                <TrendingUp size={12} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.trendingText}>Trending</Text>
-              </View>
-            )}
-            
-            {/* User Info Overlay */}
-            <View style={styles.userOverlay}>
-              <TouchableOpacity 
-                onPress={() => handleUserPress(post.user.id)} 
-                style={styles.userInfo}
+            {post.image && (
+              <AnimatedImageBackground
+                source={{ uri: post.image }} 
+                style={styles.postImage}
+                imageStyle={styles.postImageStyle}
               >
-                <Image source={{ uri: post.user.avatar }} style={styles.userAvatar} />
-                <View style={styles.userDetails}>
-                  <Text style={styles.username}>@{post.user.username}</Text>
-                  <Text style={styles.timestamp}>{post.timestamp}</Text>
+                <LinearGradient
+                  colors={['transparent', 'rgba(30, 30, 30, 0.7)']}
+                  style={styles.imageGradient}
+                />
+                
+                {/* Trending Badge */}
+                {post.isTrending && (
+                  <Animated.View 
+                    style={styles.trendingBadge}
+                    entering={SlideInRight.delay(500)}
+                  >
+                    <TrendingUp size={12} color="#FFFFFF" strokeWidth={2.5} />
+                    <Text style={styles.trendingText}>Trending</Text>
+                  </Animated.View>
+                )}
+                
+                {/* User Info Overlay */}
+                <View style={styles.userOverlay}>
+                  <TouchableOpacity 
+                    onPress={() => handleUserPress(post.user.id)} 
+                    style={styles.userInfo}
+                  >
+                    <Image source={{ uri: post.user.avatar }} style={styles.userAvatar} />
+                    <View style={styles.userDetails}>
+                      <Text style={styles.username}>@{post.user.username}</Text>
+                      <Text style={styles.timestamp}>{post.timestamp}</Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
-            </View>
+              </AnimatedImageBackground>
+            )}
           </View>
-        )}
+        </TouchableOpacity>
 
         {/* Post Content */}
         <View style={styles.postContent}>
@@ -314,26 +417,32 @@ export default function FeedScreen() {
               style={[styles.actionButton, likeAnimatedStyle]}
               onPress={handlePostLike}
             >
-              <Heart
-                size={24}
-                color={isLiked ? '#E74C3C' : '#FFFFFF'}
-                fill={isLiked ? '#E74C3C' : 'transparent'}
-                strokeWidth={2}
-              />
+              <View style={[styles.actionIconContainer, isLiked && styles.likedIconContainer]}>
+                <Heart
+                  size={20}
+                  color={isLiked ? '#FFFFFF' : '#E0E0E0'}
+                  fill={isLiked ? '#FFFFFF' : 'transparent'}
+                  strokeWidth={2}
+                />
+              </View>
             </AnimatedTouchableOpacity>
 
             <AnimatedTouchableOpacity
               style={[styles.actionButton, commentAnimatedStyle]}
               onPress={handlePostComment}
             >
-              <MessageCircle size={24} color="#FFFFFF" strokeWidth={2} />
+              <View style={styles.actionIconContainer}>
+                <MessageCircle size={20} color="#E0E0E0" strokeWidth={2} />
+              </View>
             </AnimatedTouchableOpacity>
 
             <AnimatedTouchableOpacity
               style={[styles.actionButton, shareAnimatedStyle]}
               onPress={handlePostShare}
             >
-              <Share2 size={24} color="#FFFFFF" strokeWidth={2} />
+              <View style={styles.actionIconContainer}>
+                <Share2 size={20} color="#E0E0E0" strokeWidth={2} />
+              </View>
             </AnimatedTouchableOpacity>
           </View>
 
@@ -357,52 +466,119 @@ export default function FeedScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
-  // Shorts section component
-  const ShortsSection = () => (
-    <View style={styles.shortsSection}>
-      <View style={styles.shortsHeader}>
-        <View style={styles.shortsTitle}>
-          <Play size={20} color="#E74C3C" fill="#E74C3C" />
-          <Text style={styles.shortsTitleText}>Shorts</Text>
-        </View>
-        <TouchableOpacity onPress={handleShortsPress}>
-          <Text style={styles.seeAllText}>See all</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.shortsScrollContainer}
+  // Enhanced Shorts section with animations
+  const ShortsSection = () => {
+    const shortScale = useSharedValue(1);
+
+    const handleShortPress = (shortId: string) => {
+      shortScale.value = withSequence(
+        withSpring(0.95, { damping: 15 }),
+        withSpring(1, { damping: 15 })
+      );
+      handleShortsPress();
+    };
+
+    return (
+      <Animated.View 
+        style={styles.shortsSection}
+        entering={FadeInDown.delay(300).springify()}
       >
-        {mockShorts.map((short, index) => (
-          <TouchableOpacity
-            key={short.id}
-            style={styles.shortCard}
-            onPress={handleShortsPress}
-          >
-            <Image source={{ uri: short.thumbnail }} style={styles.shortThumbnail} />
-            <LinearGradient
-              colors={['transparent', 'rgba(0, 0, 0, 0.8)']}
-              style={styles.shortGradient}
-            >
-              <View style={styles.shortInfo}>
-                <Text style={styles.shortDuration}>{short.duration}</Text>
-                <Text style={styles.shortViews}>{short.views}</Text>
-              </View>
-            </LinearGradient>
-            <View style={styles.playIcon}>
-              <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
-            </View>
+        <View style={styles.shortsHeader}>
+          <View style={styles.shortsTitle}>
+            <Play size={20} color="#E74C3C" fill="#E74C3C" />
+            <Text style={styles.shortsTitleText}>Shorts</Text>
+          </View>
+          <TouchableOpacity onPress={handleShortsPress}>
+            <Text style={styles.seeAllText}>See all</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
+        </View>
+        
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.shortsScrollContainer}
+          snapToInterval={166}
+          decelerationRate="fast"
+          snapToAlignment="start"
+        >
+          {mockShorts.map((short, index) => {
+            const itemScale = useSharedValue(1);
+            
+            const handlePress = () => {
+              itemScale.value = withSequence(
+                withSpring(0.95, { damping: 12 }),
+                withSpring(1, { damping: 12 })
+              );
+              runOnJS(handleShortPress)(short.id);
+            };
+
+            const animatedStyle = useAnimatedStyle(() => ({
+              transform: [{ scale: itemScale.value }],
+            }));
+
+            return (
+              <AnimatedTouchableOpacity
+                key={short.id}
+                style={[styles.shortCard, animatedStyle]}
+                onPress={handlePress}
+                entering={SlideInRight.delay(index * 100)}
+              >
+                <ImageBackground
+                  source={{ uri: short.thumbnail }}
+                  style={styles.shortThumbnail}
+                  imageStyle={styles.shortImageStyle}
+                >
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0, 0, 0, 0.8)']}
+                    style={styles.shortGradient}
+                  >
+                    {/* New Badge */}
+                    {short.isNew && (
+                      <View style={styles.newBadge}>
+                        <Text style={styles.newText}>NEW</Text>
+                      </View>
+                    )}
+                    
+                    {/* Play Icon */}
+                    <View style={styles.playIcon}>
+                      <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                    </View>
+                    
+                    {/* Video Info */}
+                    <View style={styles.shortInfo}>
+                      <View style={styles.shortMetrics}>
+                        <View style={styles.metricItem}>
+                          <Clock size={10} color="#FFFFFF" />
+                          <Text style={styles.shortDuration}>{short.duration}</Text>
+                        </View>
+                        <View style={styles.metricItem}>
+                          <Eye size={10} color="#FFFFFF" />
+                          <Text style={styles.shortViews}>{short.views}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.shortTitle} numberOfLines={1}>
+                        {short.title}
+                      </Text>
+                      <Text style={styles.shortCreator} numberOfLines={1}>
+                        @{short.creator}
+                      </Text>
+                    </View>
+                  </LinearGradient>
+                </ImageBackground>
+              </AnimatedTouchableOpacity>
+            );
+          })}
+          
+          {/* Spacer for showing half of next item */}
+          <View style={styles.shortsSpacer} />
+        </ScrollView>
+      </Animated.View>
+    );
+  };
 
   const renderPost = ({ item, index }: { item: Post; index: number }) => {
     // Insert shorts section after 2nd post
@@ -428,7 +604,11 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1E1E1E" />
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#1E1E1E" 
+        translucent={Platform.OS === 'android'}
+      />
       
       <Header />
       
@@ -446,6 +626,7 @@ export default function FeedScreen() {
             onRefresh={handleRefresh}
             tintColor="#6C5CE7"
             progressBackgroundColor="#1E1E1E"
+            colors={['#6C5CE7']}
           />
         }
         ListHeaderComponent={
@@ -460,6 +641,11 @@ export default function FeedScreen() {
         maxToRenderPerBatch={3}
         windowSize={5}
         initialNumToRender={2}
+        getItemLayout={(data, index) => ({
+          length: width + 100, // Approximate item height
+          offset: (width + 100) * index,
+          index,
+        })}
       />
 
       {/* Comment System */}
@@ -487,11 +673,14 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   header: {
     backgroundColor: '#1E1E1E',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(108, 92, 231, 0.2)',
+    zIndex: 1000,
+  },
+  headerBlur: {
+    backgroundColor: Platform.OS === 'android' ? '#1E1E1E' : 'transparent',
   },
   headerContent: {
     flexDirection: 'row',
@@ -499,25 +688,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 16 : 16,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  logoEmoji: {
+    fontSize: 24,
+    marginRight: 8,
   },
   logoText: {
     fontSize: 24,
     fontWeight: '700',
     color: '#6C5CE7',
-    marginLeft: 8,
     letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   messageButton: {
     position: 'relative',
-    padding: 8,
-    backgroundColor: 'rgba(108, 92, 231, 0.1)',
-    borderRadius: 20,
+    padding: 10,
+    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(108, 92, 231, 0.3)',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   messageBadge: {
     position: 'absolute',
@@ -532,11 +736,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderWidth: 2,
     borderColor: '#1E1E1E',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 6,
   },
   badgeText: {
     fontSize: 11,
     color: '#FFFFFF',
     fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   feedContent: {
     paddingBottom: 20,
@@ -544,13 +754,14 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: '#1E1E1E',
     marginBottom: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+    marginHorizontal: 4,
   },
   mediaContainer: {
     position: 'relative',
@@ -560,7 +771,18 @@ const styles = StyleSheet.create({
   postImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    justifyContent: 'flex-end',
+  },
+  postImageStyle: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  imageGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
   },
   trendingBadge: {
     position: 'absolute',
@@ -569,14 +791,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(108, 92, 231, 0.9)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   trendingText: {
     fontSize: 11,
@@ -584,6 +808,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 4,
     letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   userOverlay: {
     position: 'absolute',
@@ -596,12 +821,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
     borderWidth: 2,
     borderColor: '#6C5CE7',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 6,
   },
   userDetails: {
     flex: 1,
@@ -610,49 +840,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   timestamp: {
     fontSize: 13,
     color: '#E0E0E0',
     marginTop: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   postContent: {
-    padding: 16,
+    padding: 20,
   },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    gap: 20,
   },
   actionButton: {
-    marginRight: 16,
-    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  likedIconContainer: {
+    backgroundColor: '#E74C3C',
+    borderColor: '#E74C3C',
+    shadowColor: '#E74C3C',
+    shadowOpacity: 0.4,
   },
   likesText: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   likedText: {
-    color: '#6C5CE7',
+    color: '#E74C3C',
   },
   captionContainer: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   caption: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 22,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   captionUsername: {
     fontWeight: '700',
     color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   captionText: {
     color: '#E0E0E0',
@@ -662,13 +919,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999999',
     fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   shortsSection: {
     backgroundColor: '#2A2A2A',
     marginBottom: 24,
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 0,
+    borderRadius: 20,
+    padding: 20,
+    marginHorizontal: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   shortsHeader: {
     flexDirection: 'row',
@@ -681,71 +944,134 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shortsTitleText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
     marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   seeAllText: {
     fontSize: 14,
     color: '#6C5CE7',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   shortsScrollContainer: {
-    paddingRight: 16,
+    paddingRight: 20,
+    gap: 12,
   },
   shortCard: {
     width: 150,
-    height: 200,
-    borderRadius: 12,
+    height: 220,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginRight: 12,
-    position: 'relative',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   shortThumbnail: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    justifyContent: 'space-between',
+  },
+  shortImageStyle: {
+    borderRadius: 16,
   },
   shortGradient: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  newBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E74C3C',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  newText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  playIcon: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
+    top: '45%',
+    left: '50%',
+    transform: [{ translateX: -16 }, { translateY: -16 }],
+    width: 32,
+    height: 32,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 6,
   },
   shortInfo: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    right: 8,
+    alignSelf: 'stretch',
+  },
+  shortMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  metricItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   shortDuration: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#FFFFFF',
     fontWeight: '600',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   shortViews: {
     fontSize: 11,
     color: '#E0E0E0',
-    marginTop: 2,
+    fontWeight: '500',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
-  playIcon: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -12 }, { translateY: -12 }],
-    width: 24,
-    height: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  shortTitle: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  shortCreator: {
+    fontSize: 12,
+    color: '#E0E0E0',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  shortsSpacer: {
+    width: 20, // Half visible next item
   },
 });

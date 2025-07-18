@@ -22,17 +22,26 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#1E1E1E',
-          borderTopColor: '#6C5CE7',
+          borderTopColor: 'rgba(108, 92, 231, 0.3)',
           borderTopWidth: 1,
-          height: 60,
+          height: Platform.OS === 'ios' ? 85 : 65,
           paddingBottom: 8,
           paddingTop: 8,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 12,
+          elevation: 12,
         },
         tabBarActiveTintColor: '#6C5CE7',
-        tabBarInactiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: '#E0E0E0',
         tabBarShowLabel: false,
         tabBarIconStyle: {
           marginTop: 4,
+          shadowColor: '#6C5CE7',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4,
         },
       }}>
       <Tabs.Screen
@@ -56,14 +65,19 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ size, color, focused }) => (
             <View style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
               backgroundColor: focused ? '#6C5CE7' : 'rgba(108, 92, 231, 0.3)',
               justifyContent: 'center',
               alignItems: 'center',
+              shadowColor: focused ? '#6C5CE7' : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: focused ? 0.6 : 0,
+              shadowRadius: focused ? 8 : 0,
+              elevation: focused ? 6 : 0,
             }}>
-              <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
+              <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
             </View>
           ),
         }}
@@ -96,7 +110,9 @@ export default function TabLayout() {
         name="messages"
         options={{
           href: null, // Hide from tab bar since it's accessible via header
-          tabBarIcon: () => null,
+          tabBarIcon: ({ size, color }) => (
+            <MessageCircle size={size} color={color} strokeWidth={2} />
+          ),
         }}
       />
     </Tabs>
@@ -113,5 +129,6 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });

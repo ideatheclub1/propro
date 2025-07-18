@@ -7,6 +7,8 @@ import {
   Image,
   StyleSheet,
   Alert,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -16,6 +18,9 @@ import Animated, {
   withRepeat,
   withTiming,
   interpolate,
+  withSequence,
+  FadeInRight,
+  SlideInLeft,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Plus } from 'lucide-react-native';
@@ -23,6 +28,7 @@ import { useRouter } from 'expo-router';
 import { Story, User } from '../types';
 import { useUser } from '@/contexts/UserContext';
 
+const { width } = Dimensions.get('window');
 interface StoryCarouselProps {
   stories: Story[];
   onAddStory: () => void;
@@ -73,11 +79,22 @@ export default function StoryCarousel({
   const StoryItem = ({ story, isAddStory = false }: { story?: Story; isAddStory?: boolean }) => {
     const scale = useSharedValue(1);
     const ringGlow = useSharedValue(0);
+    const pulseAnimation = useSharedValue(1);
 
     React.useEffect(() => {
       if (!isAddStory) {
         ringGlow.value = withRepeat(
-          withTiming(1, { duration: 3000 }),
+          withTiming(1, { duration: 4000 }),
+          -1,
+          true
+        );
+      } else {
+        // Subtle pulse for "Your Story"
+        pulseAnimation.value = withRepeat(
+          withSequence(
+            withTiming(1.05, { duration: 2000 }),
+            withTiming(1, { duration: 2000 })
+          ),
           -1,
           true
         );
@@ -90,11 +107,11 @@ export default function StoryCarousel({
       } catch (error) {
         console.error('Haptics error:', error);
       }
-      scale.value = withSpring(0.95);
+      scale.value = withSpring(0.9, { damping: 12 });
     };
 
     const handlePressOut = () => {
-      scale.value = withSpring(1);
+      scale.value = withSpring(1, { damping: 12 });
     };
 
     const handlePress = () => {
@@ -115,35 +132,40 @@ export default function StoryCarousel({
     }));
 
     const ringAnimatedStyle = useAnimatedStyle(() => ({
-      shadowOpacity: isAddStory ? 0.3 : interpolate(ringGlow.value, [0, 1], [0.4, 0.8]),
-      shadowRadius: isAddStory ? 8 : interpolate(ringGlow.value, [0, 1], [8, 16]),
+      shadowOpacity: isAddStory ? 0.4 : interpolate(ringGlow.value, [0, 1], [0.5, 0.9]),
+      shadowRadius: isAddStory ? 10 : interpolate(ringGlow.value, [0, 1], [10, 20]),
+      transform: isAddStory ? [{ scale: pulseAnimation.value }] : [],
     }));
 
     if (isAddStory) {
       return (
         <AnimatedTouchableOpacity
-          style={[styles.storyContainer, storyAnimatedStyle]}
+          style={[styles.storyContainer, storyAnimatedStyle]} 
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           onPress={handlePress}
+          entering={FadeInRight.delay(index * 100).springify()}
+          entering={SlideInLeft.duration(600)}
         >
           <Animated.View style={[styles.addStoryBorder, ringAnimatedStyle]}>
             <View style={styles.addStoryImageContainer}>
-              <Image 
+              colors={['#6C5CE7', '#8B5CF6', '#A855F7', '#C084FC']}
                 source={{ 
                   uri: currentUser?.avatar ?? 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' 
                 }} 
                 style={styles.addStoryImage} 
               />
-              <LinearGradient
-                colors={['#6C5CE7', '#8B5CF6']}
-                style={styles.addButton}
-              >
-                <Plus size={16} color="#FFFFFF" strokeWidth={3} />
-              </LinearGradient>
+              <Animated.View style={styles.addButton}>
+                <LinearGradient
+                  colors={['#6C5CE7', '#8B5CF6']}
+                  style={styles.addButtonGradient}
+                >
+                  <Plus size={16} color="#FFFFFF" strokeWidth={3} />
+                </LinearGradient>
+              </Animated.View>
             </View>
           </Animated.View>
-          <Text style={styles.storyUsername}>Your Story</Text>
+          <Text style={styles.storyUsername}>Add Story</Text>
         </AnimatedTouchableOpacity>
       );
     }
@@ -184,21 +206,26 @@ export default function StoryCarousel({
   };
 
   return (
-    <View style={styles.container}>
+    <Animated.View 
+      style={styles.container}
+      entering={SlideInLeft.duration(800)}
+    >
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        snapToInterval={84}
+        snapToInterval={88}
         decelerationRate="fast"
         snapToAlignment="start"
+        bounces={true}
+        bouncesZoom={true}
       >
         {/* Add Story Button */}
         <StoryItem isAddStory />
 
         {/* Stories */}
-        {stories?.filter(story => story && story.user).map((story) => (
-          <StoryItem key={story?.id || Math.random().toString()} story={story} />
+        {stories?.filter(story => story && story.user).map((story, index) => (
+          <StoryItem key={story?.id || Math.random().toString()} story={story} index={index} />
         ))}
         
         {/* Spacer for half-visible next item */}
@@ -206,16 +233,19 @@ export default function StoryCarousel({
       </ScrollView>
       
       {/* Bottom divider */}
-      <View style={styles.bottomDivider} />
-    </View>
+      <Animated.View 
+        style={styles.bottomDivider}
+        entering={FadeInRight.delay(500)}
+      />
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1E1E1E',
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -228,38 +258,40 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 16,
   },
   storyContainer: {
     alignItems: 'center',
-    width: 72,
+    width: 80,
   },
   addStoryBorder: {
-    marginBottom: 8,
+    marginBottom: 12,
     shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
     elevation: 6,
   },
   addStoryImageContainer: {
     position: 'relative',
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 3,
-    borderColor: '#2A2A2A',
+    borderColor: '#3A3A3A',
     padding: 3,
   },
   addStoryImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 33,
+    borderRadius: 35,
   },
   addButton: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
+    bottom: -4,
+    right: -4,
+  },
+  addButtonGradient: {
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -274,15 +306,15 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   storyBorder: {
-    marginBottom: 8,
+    marginBottom: 12,
     shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
     elevation: 8,
   },
   storyGradientBorder: {
-    padding: 3,
+    padding: 4,
     borderRadius: 39,
     shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 4 },
@@ -292,31 +324,37 @@ const styles = StyleSheet.create({
   },
   storyImageContainer: {
     backgroundColor: '#1E1E1E',
-    borderRadius: 36,
-    padding: 3,
+    borderRadius: 35,
+    padding: 2,
   },
   storyImage: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
   },
   storyUsername: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     textAlign: 'center',
-    maxWidth: 72,
-    fontWeight: '500',
+    maxWidth: 80,
+    fontWeight: '600',
     textShadowColor: 'rgba(0, 0, 0, 0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   spacer: {
-    width: 36, // Half width to show next item
+    width: 40, // Half width to show next item
   },
   bottomDivider: {
     height: 0.5,
-    backgroundColor: 'rgba(108, 92, 231, 0.2)',
+    backgroundColor: 'rgba(108, 92, 231, 0.25)',
     marginHorizontal: 20,
-    marginTop: 12,
+    marginTop: 16,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });
