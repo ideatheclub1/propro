@@ -1,0 +1,186 @@
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User } from '../types';
+
+const USER_STORAGE_KEY = '@user_data';
+
+interface UserState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  error: string | null;
+}
+
+type UserAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'LOGOUT' };
+
+interface UserContextType extends UserState {
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
+}
+
+const initialState: UserState = {
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
+  error: null,
+};
+
+const userReducer = (state: UserState, action: UserAction): UserState => {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    case 'SET_USER':
+      return { 
+        ...state, 
+        user: action.payload, 
+        isAuthenticated: !!action.payload,
+        isLoading: false,
+        error: null 
+      };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, isLoading: false };
+    case 'LOGOUT':
+      return { ...initialState, isLoading: false };
+    default:
+      return state;
+  }
+};
+
+const UserContext = createContext<UserContextType | undefined>(undefined);
+
+// Default user data as fallback
+const getDefaultUser = (): User => ({
+  id: '1',
+  username: 'luna_mystic',
+  avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150',
+  bio: 'Exploring the mysteries of the night ✨',
+  location: 'Los Angeles, CA',
+  age: 24,
+  isHost: true,
+  hourlyRate: 200,
+  totalChats: 156,
+  responseTime: '5 min',
+  isFollowing: false,
+});
+
+export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [state, dispatch] = useReducer(userReducer, initialState);
+
+  // Load user data on app start
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
+      
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          // Validate that required fields exist
+          if (parsedUser && typeof parsedUser === 'object' && parsedUser.id) {
+            dispatch({ type: 'SET_USER', payload: parsedUser });
+          } else {
+            // Invalid stored data, use default
+            const defaultUser = getDefaultUser();
+            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
+            dispatch({ type: 'SET_USER', payload: defaultUser });
+          }
+        } catch (parseError) {
+          console.error('Error parsing stored user data:', parseError);
+          // Corrupted data, use default
+          const defaultUser = getDefaultUser();
+          await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
+          dispatch({ type: 'SET_USER', payload: defaultUser });
+        }
+      } else {
+        // No stored user, not authenticated
+        dispatch({ type: 'SET_USER', payload: null });
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data' });
+    }
+  };
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
+
+      // Simulate login validation
+      if (!email?.trim() || !password?.trim()) {
+        dispatch({ type: 'SET_ERROR', payload: 'Email and password are required' });
+        return false;
+      }
+
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Create user data (in real app, this would come from API)
+      const userData = getDefaultUser();
+      
+      // Store user data
+      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+      dispatch({ type: 'SET_USER', payload: userData });
+      
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Login failed. Please try again.' });
+      return false;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(USER_STORAGE_KEY);
+      dispatch({ type: 'LOGOUT' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Logout failed' });
+    }
+  };
+
+  const updateUser = async (userData: Partial<User>): Promise<void> => {
+    try {
+      if (!state.user) return;
+      
+      const updatedUser = { ...state.user, ...userData };
+      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+      dispatch({ type: 'SET_USER', payload: updatedUser });
+    } catch (error) {
+      console.error('Update user error:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to update user data' });
+    }
+  };
+
+  const value: UserContextType = {
+    ...state,
+    login,
+    logout,
+    updateUser,
+  };
+
+  return (
+    <UserContext.Provider value={value}>
+      {children}
+    </UserContext.Provider>
+  );
+};
+
+export const useUser = (): UserContextType => {
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
+};
