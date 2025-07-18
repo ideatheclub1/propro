@@ -454,7 +454,12 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
                   <BlurView intensity={30} style={styles.messageButtonBlur}>
                     <MessageCircle size={18} color="#FFFFFF" />
                     <Text style={[styles.messageButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                      Message
+            <Image 
+              source={{ 
+                uri: user?.avatar ?? 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' 
+              }} 
+              style={styles.profileImage} 
+            />
                     </Text>
                   </BlurView>
                 </TouchableOpacity>

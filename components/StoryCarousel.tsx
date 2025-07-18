@@ -7,8 +7,8 @@ import {
   Image,
   StyleSheet,
   Alert,
-  Dimensions,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
