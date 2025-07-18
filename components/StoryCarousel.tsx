@@ -149,7 +149,7 @@ export default function StoryCarousel({
         >
           <Animated.View style={[styles.addStoryBorder, ringAnimatedStyle]}>
             <View style={styles.addStoryImageContainer}>
-              colors={['#6C5CE7', '#8B5CF6', '#A855F7', '#C084FC']}
+              <Image
                 source={{ 
                   uri: currentUser?.avatar ?? 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' 
                 }} 
