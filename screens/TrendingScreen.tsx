@@ -12,6 +12,7 @@ import {
   Modal,
   Dimensions,
   StatusBar,
+  Platform,
   ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

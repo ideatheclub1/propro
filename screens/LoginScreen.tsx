@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Platform,
   ScrollView,
   Image,
   Modal,

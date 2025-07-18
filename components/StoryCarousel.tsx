@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Platform,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

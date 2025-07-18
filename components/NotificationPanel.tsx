@@ -8,6 +8,7 @@ import {
   Modal,
   SafeAreaView,
   Animated,
+  Platform,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
