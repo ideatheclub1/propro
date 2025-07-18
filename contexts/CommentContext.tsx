@@ -234,10 +234,12 @@ export const CommentProvider: React.FC<{ children: ReactNode }> = ({ children })
             return;
           } else {
             // Invalid data structure, use mock data
+            await AsyncStorage.removeItem(STORAGE_KEY); // Clear invalid data
             dispatch({ type: 'SET_COMMENTS', payload: mockComments });
           }
         } catch (parseError) {
           console.error('Error parsing comments:', parseError);
+          await AsyncStorage.removeItem(STORAGE_KEY); // Clear corrupt data
           dispatch({ type: 'SET_COMMENTS', payload: mockComments });
         }
       } else {
