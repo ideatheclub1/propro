@@ -87,14 +87,19 @@ export default function LoginScreen() {
       -1,
       true
     );
+  }, []);
+
+  React.useEffect(() => {
     if (faceScanning) {
       scanAnimation.value = withRepeat(
         withTiming(1, { duration: 2000 }),
         -1,
         true
       );
+    } else {
+      scanAnimation.value = 0;
     }
-  }, []);
+  }, [faceScanning]);
 
   const moonAnimatedStyle = useAnimatedStyle(() => {
     return {

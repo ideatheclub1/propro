@@ -11,8 +11,8 @@ import {
   Image,
   Dimensions,
   StatusBar,
-  Platform,
   ImageBackground,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
