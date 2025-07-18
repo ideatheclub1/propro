@@ -12,7 +12,6 @@ import {
   Dimensions,
   StatusBar,
   Platform,
-  Platform,
   ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
