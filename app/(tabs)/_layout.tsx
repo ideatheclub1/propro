@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Chrome as Home, TrendingUp, Search, User, Play, MessageCircle, Plus } from 'lucide-react-native';
 import Animated, {
@@ -152,4 +152,3 @@ export default function TabLayout() {
       />
     </Tabs>
   );
-}
