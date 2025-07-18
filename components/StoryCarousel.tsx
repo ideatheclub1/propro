@@ -76,7 +76,7 @@ export default function StoryCarousel({
     );
   }
 
-  const StoryItem = ({ story, isAddStory = false }: { story?: Story; isAddStory?: boolean }) => {
+  const StoryItem = ({ story, isAddStory = false, index = 0 }: { story?: Story; isAddStory?: boolean; index?: number }) => {
     const scale = useSharedValue(1);
     const ringGlow = useSharedValue(0);
     const pulseAnimation = useSharedValue(1);
