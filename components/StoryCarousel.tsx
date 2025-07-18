@@ -228,11 +228,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    gap: 16,
+    gap: 12,
   },
   storyContainer: {
     alignItems: 'center',
-    width: 68,
+    width: 72,
   },
   addStoryBorder: {
     marginBottom: 8,
@@ -244,17 +244,17 @@ const styles = StyleSheet.create({
   },
   addStoryImageContainer: {
     position: 'relative',
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderWidth: 3,
-    borderColor: '#333333',
+    borderColor: '#2A2A2A',
     padding: 3,
   },
   addStoryImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 31,
+    borderRadius: 33,
   },
   addButton: {
     position: 'absolute',
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   },
   storyGradientBorder: {
     padding: 3,
-    borderRadius: 37,
+    borderRadius: 39,
     shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -292,26 +292,26 @@ const styles = StyleSheet.create({
   },
   storyImageContainer: {
     backgroundColor: '#1E1E1E',
-    borderRadius: 34,
+    borderRadius: 36,
     padding: 3,
   },
   storyImage: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
   },
   storyUsername: {
     color: '#FFFFFF',
     fontSize: 12,
     textAlign: 'center',
-    maxWidth: 68,
+    maxWidth: 72,
     fontWeight: '500',
     textShadowColor: 'rgba(0, 0, 0, 0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   spacer: {
-    width: 34, // Half width to show next item
+    width: 36, // Half width to show next item
   },
   bottomDivider: {
     height: 0.5,
