@@ -103,7 +103,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         } catch (parseError) {
           console.error('Error parsing stored user data:', parseError);
-          await AsyncStorage.removeItem(USER_STORAGE_KEY); // Clear corrupt data
+          // Clear corrupt data to prevent future crashes
+          try {
+            await AsyncStorage.removeItem(USER_STORAGE_KEY);
+          } catch (clearError) {
+            console.error('Error clearing corrupt user data:', clearError);
+          }
         }
       }
       

@@ -2,48 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Chrome as Home, TrendingUp, Search, User, Play, MessageCircle, Plus } from 'lucide-react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withRepeat,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
 import { useUser } from '@/contexts/UserContext';
-
-const AnimatedTabs = Animated.createAnimatedComponent(Tabs);
-
-const TabIcon = ({ IconComponent, size, color, isActive }: any) => {
-  const scale = useSharedValue(1);
-  const glow = useSharedValue(0);
-
-  React.useEffect(() => {
-    if (isActive) {
-      scale.value = withSpring(1.1);
-      glow.value = withRepeat(
-        withTiming(1, { duration: 2000 }),
-        -1,
-        true
-      );
-    } else {
-      scale.value = withSpring(1);
-      glow.value = 0;
-    }
-  }, [isActive]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    shadowOpacity: isActive ? interpolate(glow.value, [0, 1], [0.3, 0.6]) : 0,
-    shadowRadius: isActive ? interpolate(glow.value, [0, 1], [4, 12]) : 0,
-  }));
-
-  return (
-    <Animated.View style={[animatedStyle, { shadowColor: '#6C5CE7' }]}>
-      <IconComponent size={size} color={color} strokeWidth={2} />
-    </Animated.View>
-  );
-};
 
 export default function TabLayout() {
   const { user, isLoading } = useUser();
@@ -62,18 +21,12 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: 'rgba(30, 30, 30, 0.95)',
-          borderTopColor: 'rgba(108, 92, 231, 0.3)',
+          backgroundColor: '#1E1E1E',
+          borderTopColor: '#6C5CE7',
           borderTopWidth: 1,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
-          shadowColor: '#6C5CE7',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 12,
-          elevation: 8,
-          backdropFilter: 'blur(20px)',
         },
         tabBarActiveTintColor: '#6C5CE7',
         tabBarInactiveTintColor: '#FFFFFF',
@@ -85,16 +38,16 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ size, color, focused }) => (
-            <TabIcon IconComponent={Home} size={size} color={color} isActive={focused} />
+          tabBarIcon: ({ size, color }) => (
+            <Home size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
       <Tabs.Screen
         name="reels"
         options={{
-          tabBarIcon: ({ size, color, focused }) => (
-            <TabIcon IconComponent={Play} size={size} color={color} isActive={focused} />
+          tabBarIcon: ({ size, color }) => (
+            <Play size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
@@ -109,11 +62,6 @@ export default function TabLayout() {
               backgroundColor: focused ? '#6C5CE7' : 'rgba(108, 92, 231, 0.3)',
               justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: '#6C5CE7',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: focused ? 0.4 : 0.2,
-              shadowRadius: 8,
-              elevation: 6,
             }}>
               <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
             </View>
@@ -123,24 +71,24 @@ export default function TabLayout() {
       <Tabs.Screen
         name="trending"
         options={{
-          tabBarIcon: ({ size, color, focused }) => (
-            <TabIcon IconComponent={TrendingUp} size={size} color={color} isActive={focused} />
+          tabBarIcon: ({ size, color }) => (
+            <TrendingUp size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          tabBarIcon: ({ size, color, focused }) => (
-            <TabIcon IconComponent={Search} size={size} color={color} isActive={focused} />
+          tabBarIcon: ({ size, color }) => (
+            <Search size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ size, color, focused }) => (
-            <TabIcon IconComponent={User} size={size} color={color} isActive={focused} />
+          tabBarIcon: ({ size, color }) => (
+            <User size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
@@ -154,3 +102,16 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E1E1E',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+});
