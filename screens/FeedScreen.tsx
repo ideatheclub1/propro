@@ -95,7 +95,7 @@ const mockShorts = [
   },
 ];
 
-export default function FeedScreen() {
+const FeedScreenContent = () => {
   const router = useRouter();
   const { user: currentUser } = useUser();
   const { getCommentCount } = useComments();
@@ -604,7 +604,6 @@ export default function FeedScreen() {
   }
 
   return (
-    <SwipeContainer>
     <SafeAreaView style={styles.container}>
       <StatusBar 
         barStyle="light-content" 
@@ -658,6 +657,13 @@ export default function FeedScreen() {
         postType="feed"
       />
     </SafeAreaView>
+  );
+};
+
+export default function FeedScreen() {
+  return (
+    <SwipeContainer>
+      <FeedScreenContent />
     </SwipeContainer>
   );
 }

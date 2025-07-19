@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { X, RotateCcw, Zap, ZapOff, Image, Video, Circle, ListFilter as Filter, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { X, RotateCcw, Zap, ZapOff, Image, Video, Circle, Camera, AlertCircle } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,23 +31,15 @@ interface CameraScreenProps {
   onClose: () => void;
 }
 
-type CameraMode = 'post' | 'reel' | 'story' | 'live';
+type CameraMode = 'Post' | 'Reel' | 'Story' | 'Live';
 
-interface FilterOption {
-  id: string;
-  name: string;
-  preview: string;
-}
-
-const cameraFilters: FilterOption[] = [
-  { id: 'normal', name: 'Normal', preview: '📷' },
-  { id: 'vintage', name: 'Vintage', preview: '🎞️' },
-  { id: 'blackwhite', name: 'B&W', preview: '⚫' },
-  { id: 'sepia', name: 'Sepia', preview: '🤎' },
-  { id: 'vibrant', name: 'Vibrant', preview: '🌈' },
-  { id: 'cool', name: 'Cool', preview: '❄️' },
-  { id: 'warm', name: 'Warm', preview: '🔥' },
-  { id: 'dramatic', name: 'Drama', preview: '⚡' },
+const cameraFilters = [
+  { id: 'normal', name: 'Normal', emoji: '📷' },
+  { id: 'vintage', name: 'Vintage', emoji: '🎞️' },
+  { id: 'blackwhite', name: 'B&W', emoji: '⚫' },
+  { id: 'sepia', name: 'Sepia', emoji: '🤎' },
+  { id: 'vibrant', name: 'Vibrant', emoji: '🌈' },
+  { id: 'cool', name: 'Cool', emoji: '❄️' },
 ];
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -56,7 +48,7 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
   const [facing, setFacing] = useState<CameraType>('back');
   const [flashMode, setFlashMode] = useState<FlashMode>('off');
   const [permission, requestPermission] = useCameraPermissions();
-  const [currentMode, setCurrentMode] = useState<CameraMode>('post');
+  const [currentMode, setCurrentMode] = useState<CameraMode>('Post');
   const [isRecording, setIsRecording] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('normal');
@@ -64,7 +56,7 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
   // Animation values
   const recordButtonScale = useSharedValue(1);
   const recordButtonPulse = useSharedValue(0);
-  const modeSlideY = useSharedValue(0);
+  const modeGlow = useSharedValue(0);
   const filterPanelY = useSharedValue(SCREEN_HEIGHT);
   const flashOpacity = useSharedValue(0);
 
@@ -84,13 +76,13 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
   }, [isRecording]);
 
   useEffect(() => {
-    if (isVisible) {
-      modeSlideY.value = withSpring(0, { damping: 15 });
-    } else {
-      modeSlideY.value = withTiming(100, { duration: 300 });
-      setShowFilters(false);
-    }
-  }, [isVisible]);
+    // Soft glow animation for active mode
+    modeGlow.value = withRepeat(
+      withTiming(1, { duration: 2000 }),
+      -1,
+      true
+    );
+  }, []);
 
   useEffect(() => {
     if (showFilters) {
@@ -111,10 +103,6 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
   const handleModeChange = (mode: CameraMode) => {
     triggerHaptic();
     setCurrentMode(mode);
-    modeSlideY.value = withSequence(
-      withSpring(-10, { damping: 10 }),
-      withSpring(0, { damping: 10 })
-    );
   };
 
   const handleFlipCamera = () => {
@@ -137,7 +125,7 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
 
   const handleRecord = () => {
     triggerHaptic();
-    if (currentMode === 'post') {
+    if (currentMode === 'Post') {
       // Take photo
       Alert.alert('Photo', 'Photo capture functionality would be implemented here');
     } else {
@@ -153,9 +141,9 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
   const handleGalleryImport = async () => {
     triggerHaptic();
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: currentMode === 'post' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.All,
+      mediaTypes: currentMode === 'Post' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
-      aspect: currentMode === 'story' ? [9, 16] : [1, 1],
+      aspect: currentMode === 'Story' ? [9, 16] : [1, 1],
       quality: 1,
     });
 
@@ -179,9 +167,10 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
     };
   });
 
-  const modeContainerStyle = useAnimatedStyle(() => {
+  const modeGlowStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateY: modeSlideY.value }],
+      shadowOpacity: interpolate(modeGlow.value, [0, 1], [0.3, 0.7]),
+      shadowRadius: interpolate(modeGlow.value, [0, 1], [8, 16]),
     };
   });
 
@@ -197,84 +186,117 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
     };
   });
 
+  // Permission denied fallback
   if (!permission) {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Loading camera permissions...</Text>
+      <View style={styles.fallbackContainer}>
+        <View style={styles.fallbackContent}>
+          <Camera size={48} color="#6C5CE7" />
+          <Text style={styles.fallbackTitle}>Loading camera...</Text>
+          <Text style={styles.fallbackSubtitle}>Please wait while we check permissions</Text>
+        </View>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Camera access is needed</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
+      <View style={styles.fallbackContainer}>
+        <LinearGradient
+          colors={['#1E1E1E', '#2A2A2A']}
+          style={styles.fallbackGradient}
+        >
+          <View style={styles.fallbackContent}>
+            <AlertCircle size={64} color="#6C5CE7" />
+            <Text style={styles.fallbackTitle}>Camera Access Needed</Text>
+            <Text style={styles.fallbackSubtitle}>
+              We need camera access to take photos and record videos
+            </Text>
+            <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+              <LinearGradient
+                colors={['#6C5CE7', '#5A4FCF']}
+                style={styles.permissionButtonGradient}
+              >
+                <Text style={styles.permissionButtonText}>Grant Permission</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
     );
   }
 
   const ModeSelector = () => (
-    <Animated.View style={[styles.modeContainer, modeContainerStyle]}>
-      <BlurView intensity={Platform.OS === 'ios' ? 50 : 0} style={styles.modeBlur}>
+    <View style={styles.modeContainer}>
+      <BlurView intensity={Platform.OS === 'ios' ? 40 : 0} style={styles.modeBlur}>
         <View style={styles.modeSelector}>
-          {(['post', 'reel', 'story', 'live'] as CameraMode[]).map((mode) => (
-            <TouchableOpacity
+          {(['Post', 'Reel', 'Story', 'Live'] as CameraMode[]).map((mode) => (
+            <Animated.View
               key={mode}
               style={[
-                styles.modeButton,
-                currentMode === mode && styles.activeModeButton
+                styles.modeButtonContainer,
+                currentMode === mode && modeGlowStyle
               ]}
-              onPress={() => handleModeChange(mode)}
             >
-              <Text style={[
-                styles.modeText,
-                currentMode === mode && styles.activeModeText
-              ]}>
-                {mode.toUpperCase()}
-              </Text>
-              {currentMode === mode && (
-                <View style={styles.modeIndicator} />
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  currentMode === mode && styles.activeModeButton
+                ]}
+                onPress={() => handleModeChange(mode)}
+              >
+                <Text style={[
+                  styles.modeText,
+                  currentMode === mode && styles.activeModeText
+                ]}>
+                  {mode}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           ))}
         </View>
       </BlurView>
-    </Animated.View>
+    </View>
   );
 
   const FilterPanel = () => (
     <Animated.View style={[styles.filterPanel, filterPanelStyle]}>
       <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} style={styles.filterBlur}>
-        <View style={styles.filterHeader}>
-          <Text style={styles.filterTitle}>Filters</Text>
-          <TouchableOpacity onPress={() => setShowFilters(false)}>
-            <ChevronDown size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.filterGrid}>
-          {cameraFilters.map((filter) => (
-            <TouchableOpacity
-              key={filter.id}
-              style={[
-                styles.filterCard,
-                selectedFilter === filter.id && styles.selectedFilterCard
-              ]}
-              onPress={() => handleFilterSelect(filter.id)}
-            >
-              <Text style={styles.filterEmoji}>{filter.preview}</Text>
-              <Text style={[
-                styles.filterName,
-                selectedFilter === filter.id && styles.selectedFilterName
-              ]}>
-                {filter.name}
-              </Text>
+        <LinearGradient
+          colors={['rgba(30, 30, 30, 0.95)', 'rgba(42, 42, 42, 0.9)']}
+          style={styles.filterGradient}
+        >
+          <View style={styles.filterHeader}>
+            <Text style={styles.filterTitle}>Filters</Text>
+            <TouchableOpacity onPress={() => setShowFilters(false)}>
+              <X size={24} color="#FFFFFF" />
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+          
+          <View style={styles.filterGrid}>
+            {cameraFilters.map((filter) => (
+              <TouchableOpacity
+                key={filter.id}
+                style={[
+                  styles.filterCard,
+                  selectedFilter === filter.id && styles.selectedFilterCard
+                ]}
+                onPress={() => handleFilterSelect(filter.id)}
+              >
+                <Text style={styles.filterEmoji}>{filter.emoji}</Text>
+                <Text style={[
+                  styles.filterName,
+                  selectedFilter === filter.id && styles.selectedFilterName
+                ]}>
+                  {filter.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </LinearGradient>
       </BlurView>
     </Animated.View>
   );
@@ -292,19 +314,18 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
         
         {/* Top Controls */}
         <View style={styles.topControls}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity style={styles.topButton} onPress={onClose}>
             <BlurView intensity={Platform.OS === 'ios' ? 30 : 0} style={styles.controlBlur}>
               <X size={24} color="#FFFFFF" />
             </BlurView>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.filterButton} 
+            style={styles.topButton} 
             onPress={() => setShowFilters(true)}
           >
             <BlurView intensity={Platform.OS === 'ios' ? 30 : 0} style={styles.controlBlur}>
-              <Filter size={20} color="#FFFFFF" />
-              <ChevronUp size={16} color="#FFFFFF" />
+              <Text style={styles.filterButtonText}>Filters</Text>
             </BlurView>
           </TouchableOpacity>
         </View>
@@ -345,7 +366,7 @@ export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) 
               colors={isRecording ? ['#EF4444', '#DC2626'] : ['#6C5CE7', '#5A4FCF']}
               style={styles.recordButton}
             >
-              {currentMode === 'post' ? (
+              {currentMode === 'Post' ? (
                 <Circle size={32} color="#FFFFFF" />
               ) : (
                 <View style={[
@@ -375,29 +396,55 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
-  permissionContainer: {
+  fallbackContainer: {
+    flex: 1,
+    backgroundColor: '#1E1E1E',
+  },
+  fallbackGradient: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    padding: 20,
   },
-  permissionText: {
-    fontSize: 18,
+  fallbackContent: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  fallbackTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#FFFFFF',
+    marginTop: 24,
+    marginBottom: 12,
     textAlign: 'center',
-    marginBottom: 20,
+  },
+  fallbackSubtitle: {
+    fontSize: 16,
+    color: '#E0E0E0',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
   },
   permissionButton: {
-    backgroundColor: '#6C5CE7',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
+    borderRadius: 25,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  permissionButtonGradient: {
+    paddingHorizontal: 32,
+    paddingVertical: 16,
   },
   permissionButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  closeButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  closeButtonText: {
+    color: '#E0E0E0',
+    fontSize: 16,
   },
   flashOverlay: {
     position: 'absolute',
@@ -410,7 +457,7 @@ const styles = StyleSheet.create({
   },
   topControls: {
     position: 'absolute',
-    top: 50,
+    top: 60,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -418,11 +465,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     zIndex: 5,
   },
-  closeButton: {
-    borderRadius: 25,
-    overflow: 'hidden',
-  },
-  filterButton: {
+  topButton: {
     borderRadius: 25,
     overflow: 'hidden',
   },
@@ -430,7 +473,12 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
+  },
+  filterButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   sideControls: {
     position: 'absolute',
@@ -445,7 +493,7 @@ const styles = StyleSheet.create({
   },
   bottomControls: {
     position: 'absolute',
-    bottom: 180,
+    bottom: 200,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -457,7 +505,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     padding: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000000',
+    shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -481,7 +529,7 @@ const styles = StyleSheet.create({
   },
   modeContainer: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 100,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -492,20 +540,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 8,
     paddingVertical: 8,
+    backgroundColor: Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
   },
   modeSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
+  modeButtonContainer: {
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 6,
+  },
   modeButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    position: 'relative',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   activeModeButton: {
-    backgroundColor: 'rgba(108, 92, 231, 0.8)',
+    backgroundColor: '#6C5CE7',
   },
   modeText: {
     fontSize: 14,
@@ -517,16 +573,6 @@ const styles = StyleSheet.create({
     opacity: 1,
     color: '#FFFFFF',
   },
-  modeIndicator: {
-    position: 'absolute',
-    bottom: -2,
-    left: '50%',
-    marginLeft: -2,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#6C5CE7',
-  },
   filterPanel: {
     position: 'absolute',
     bottom: 0,
@@ -536,6 +582,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   filterBlur: {
+    flex: 1,
+  },
+  filterGradient: {
     flex: 1,
     padding: 20,
   },
