@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { X, RotateCcw, Zap, ZapOff, Image, Video, Circle, Camera, AlertCircle } from 'lucide-react-native';
+import { X, RotateCcw, Zap, ZapOff, Image, Video, Circle, Camera, CircleAlert as AlertCircle } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
