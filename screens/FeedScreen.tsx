@@ -39,6 +39,7 @@ import { useComments } from '../contexts/CommentContext';
 import { useUser } from '@/contexts/UserContext';
 import StoryCarousel from '../components/StoryCarousel';
 import CommentSystem from '../components/CommentSystem';
+import SwipeContainer from '../components/SwipeContainer';
 
 const { width, height } = Dimensions.get('window');
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -603,6 +604,7 @@ export default function FeedScreen() {
   }
 
   return (
+    <SwipeContainer>
     <SafeAreaView style={styles.container}>
       <StatusBar 
         barStyle="light-content" 
@@ -656,6 +658,7 @@ export default function FeedScreen() {
         postType="feed"
       />
     </SafeAreaView>
+    </SwipeContainer>
   );
 }
 
