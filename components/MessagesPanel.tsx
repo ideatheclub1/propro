@@ -22,7 +22,7 @@ import Animated, {
   SlideInRight,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { X, MessageCircle, Search, Edit, MoreHorizontal } from 'lucide-react-native';
+import { X, MessageCircle, Search, LocationEdit as Edit, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
 import { mockConversations, mockUsers } from '../data/mockData';
 import { Conversation, User } from '../types';
 
