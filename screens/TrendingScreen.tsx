@@ -90,67 +90,7 @@ const mockTrendingPosts: TrendingPost[] = [
     aspectRatio: 1.0, // Square
     genre: 'Music',
   },
-  {
-    id: '3',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    thumbnailUrl: 'https://images.pexels.com/photos/1181263/pexels-photo-1181263.jpeg?auto=compress&cs=tinysrgb&w=400',
-    duration: '18s',
-    likes: 24500,
-    views: 89200,
-    isTrending: true,
-    isLiked: false,
-    aspectRatio: 0.8, // Shorter/wider
-    genre: 'Fitness',
-  },
-  {
-    id: '4',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    thumbnailUrl: 'https://images.pexels.com/photos/1181271/pexels-photo-1181271.jpeg?auto=compress&cs=tinysrgb&w=400',
-    duration: '31s',
-    likes: 12800,
-    views: 67500,
-    isTrending: false,
-    isLiked: false,
-    aspectRatio: 1.6, // Very tall
-    genre: 'Travel',
-  },
-  {
-    id: '5',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-    thumbnailUrl: 'https://images.pexels.com/photos/1181276/pexels-photo-1181276.jpeg?auto=compress&cs=tinysrgb&w=400',
-    duration: '28s',
-    likes: 19700,
-    views: 156400,
-    isTrending: true,
-    isLiked: true,
-    aspectRatio: 1.2,
-    genre: 'Gaming',
-  },
-  {
-    id: '6',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-    thumbnailUrl: 'https://images.pexels.com/photos/1181519/pexels-photo-1181519.jpeg?auto=compress&cs=tinysrgb&w=400',
-    duration: '16s',
-    likes: 7650,
-    views: 34200,
-    isTrending: false,
-    isLiked: false,
-    aspectRatio: 0.9,
-    genre: 'Fashion',
-  },
-  // Add more posts for variety
-  ...Array.from({ length: 20 }, (_, i) => ({
-    id: `${7 + i}`,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    thumbnailUrl: `https://images.pexels.com/photos/${1181200 + (i * 17)}/pexels-photo-${1181200 + (i * 17)}.jpeg?auto=compress&cs=tinysrgb&w=400`,
-    duration: `${15 + (i % 40)}s`,
-    likes: Math.floor(Math.random() * 50000) + 1000,
-    views: Math.floor(Math.random() * 200000) + 5000,
-    isTrending: Math.random() > 0.7,
-    isLiked: Math.random() > 0.5,
-    aspectRatio: 0.8 + (Math.random() * 1.2), // Random between 0.8 and 2.0
-    genre: genres[Math.floor(Math.random() * genres.length)],
-  })),
+  // Add more posts as needed...
 ];
 
 export default function TrendingScreen() {
@@ -852,3 +792,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
