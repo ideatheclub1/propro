@@ -31,7 +31,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
-import { MessageCircle, Edit2, Pin, Archive, VolumeX, MoreHorizontal, Search, Plus } from 'lucide-react-native';
+import { MessageCircle, LocationEdit as Edit2, Pin, Archive, VolumeX, MoveHorizontal as MoreHorizontal, Search, Plus } from 'lucide-react-native';
 import { mockConversations, mockUsers } from '../data/mockData';
 import { Conversation, User } from '../types';
 import { useUser } from '@/contexts/UserContext';
