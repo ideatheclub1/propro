@@ -57,6 +57,16 @@ const MessageCard: React.FC<MessageCardProps> = ({ conversation, onPress, onUser
   const otherUser = conversation.participants.find(p => p.id !== '1');
   if (!otherUser) return null;
 
+  const handlePinMessage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert('Pinned', `Conversation with ${otherUser.username} has been pinned`);
+  };
+
+  const handleArchiveMessage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert('Archived', `Conversation with ${otherUser.username} has been archived`);
+  };
+
   const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
     onStart: () => {
       runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
@@ -83,16 +93,6 @@ const MessageCard: React.FC<MessageCardProps> = ({ conversation, onPress, onUser
       scale.value = withSpring(1);
     },
   });
-
-  const handlePinMessage = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Pinned', `Conversation with ${otherUser.username} has been pinned`);
-  };
-
-  const handleArchiveMessage = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Archived', `Conversation with ${otherUser.username} has been archived`);
-  };
 
   const handleCardPress = () => {
     scale.value = withSequence(
