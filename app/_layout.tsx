@@ -10,6 +10,9 @@ import { UserProvider } from '@/contexts/UserContext';
 
 export default function RootLayout() {
   useFrameworkReady();
+  
+  // Force Metro bundler to include Platform polyfill for web
+  console.log(Platform.OS);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

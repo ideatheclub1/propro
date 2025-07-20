@@ -107,11 +107,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           if (isValidUser(parsedUser)) {
             if (isMountedRef.current) {
-              setTimeout(() => {
-                if (isMountedRef.current) {
-                  dispatch({ type: 'SET_USER', payload: parsedUser });
-                }
-              }, 0);
+              dispatch({ type: 'SET_USER', payload: parsedUser });
             }
             return;
           }
@@ -128,22 +124,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // No valid stored user data
       if (isMountedRef.current) {
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            dispatch({ type: 'SET_USER', payload: null });
-          }
-        }, 0);
+        dispatch({ type: 'SET_USER', payload: null });
       }
       
     } catch (error) {
       console.error('Error loading user data:', error);
       if (isMountedRef.current) {
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data' });
-            dispatch({ type: 'SET_USER', payload: null });
-          }
-        }, 0);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data' });
+        dispatch({ type: 'SET_USER', payload: null });
       }
     }
   };
