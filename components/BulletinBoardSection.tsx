@@ -6,13 +6,17 @@ import {
   StyleSheet,
   FlatList,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Plus, FileText, DollarSign } from 'lucide-react-native';
-import StickyNoteCard from './StickyNoteCard';
-import CurrencyNoteCard from './CurrencyNoteCard';
+import { Plus, FileText, Calendar } from 'lucide-react-native';
 import ImageViewerModal from './ImageViewerModal';
 import AddNoteModal from './AddNoteModal';
 
@@ -26,6 +30,57 @@ interface Note {
   amount?: number;
 }
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
+interface ModernNoteCardProps {
+  note: Note;
+  onImagePress: (note: Note) => void;
+  index: number;
+}
+
+const ModernNoteCard: React.FC<ModernNoteCardProps> = ({ note, onImagePress, index }) => {
+  const scale = useSharedValue(1);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1);
+  };
+
+  const handlePress = () => {
+    onImagePress(note);
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <AnimatedTouchableOpacity
+      style={[styles.modernCard, animatedStyle]}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+      activeOpacity={0.9}
+    >
+      <View style={styles.cardContent}>
+        <Image source={{ uri: note.smallImage }} style={styles.cardThumbnail} />
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {note.title}
+          </Text>
+          <View style={styles.cardFooter}>
+            <Calendar size={12} color="#B0B0B0" />
+            <Text style={styles.cardDate}>{note.createdAt}</Text>
+          </View>
+        </View>
+      </View>
+    </AnimatedTouchableOpacity>
+  );
+};
+
 interface BulletinBoardSectionProps {
   isCurrentUser: boolean;
 }
@@ -36,7 +91,7 @@ const STORAGE_KEY = '@bulletin_board_notes';
 const mockNotes: Note[] = [
   {
     id: '1',
-    title: 'Creative breakthrough moment',
+    title: 'Creative breakthrough moment achieved',
     smallImage: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=400',
     fullImage: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=800',
     createdAt: 'Jan 15, 2024',
@@ -44,7 +99,7 @@ const mockNotes: Note[] = [
   },
   {
     id: '2',
-    title: 'First major sale',
+    title: 'First major project milestone',
     smallImage: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=400',
     fullImage: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=800',
     createdAt: 'Feb 2, 2024',
@@ -53,7 +108,7 @@ const mockNotes: Note[] = [
   },
   {
     id: '3',
-    title: 'Gallery exhibition acceptance',
+    title: 'Professional certification earned',
     smallImage: 'https://images.pexels.com/photos/1181519/pexels-photo-1181519.jpeg?auto=compress&cs=tinysrgb&w=400',
     fullImage: 'https://images.pexels.com/photos/1181519/pexels-photo-1181519.jpeg?auto=compress&cs=tinysrgb&w=800',
     createdAt: 'Mar 10, 2024',
@@ -66,6 +121,7 @@ export default function BulletinBoardSection({ isCurrentUser }: BulletinBoardSec
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   const [notes, setNotes] = useState<Note[]>([]);
@@ -139,34 +195,22 @@ export default function BulletinBoardSection({ isCurrentUser }: BulletinBoardSec
     setShowAddModal(false);
   };
 
-  const renderNote = ({ item, index }: { item: Note; index: number }) => {
-    if (item.type === 'currency') {
-      return (
-        <CurrencyNoteCard
-          note={item}
-          onImagePress={handleImagePress}
-          index={index}
-        />
-      );
-    }
-    
-    return (
-      <StickyNoteCard
-        note={item}
-        onImagePress={handleImagePress}
-        index={index}
-      />
-    );
-  };
+  const renderNote = ({ item, index }: { item: Note; index: number }) => (
+    <ModernNoteCard
+      note={item}
+      onImagePress={handleImagePress}
+      index={index}
+    />
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <FileText size={48} color="#666666" />
-      <Text style={[styles.emptyTitle, { fontFamily: 'Inter_400Regular' }]}>
+      <Text style={[styles.emptyTitle, { fontFamily: 'Inter_600SemiBold' }]}>
         No notes yet
       </Text>
       <Text style={[styles.emptySubtitle, { fontFamily: 'Inter_400Regular' }]}>
-        {isCurrentUser ? 'Pin your first achievement or milestone' : 'This bulletin board is empty'}
+        {isCurrentUser ? 'Add your first achievement or milestone' : 'This bulletin board is empty'}
       </Text>
     </View>
   );
@@ -184,8 +228,8 @@ export default function BulletinBoardSection({ isCurrentUser }: BulletinBoardSec
       {/* Professional Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <FileText size={24} color="#6C5CE7" />
-          <Text style={[styles.sectionTitle, { fontFamily: 'Inter_600SemiBold' }]}>
+          <FileText size={22} color="#6C5CE7" />
+          <Text style={[styles.sectionTitle, { fontFamily: 'Inter_700Bold' }]}>
             Bulletin Board
           </Text>
         </View>
@@ -260,8 +304,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFFFFF',
     marginLeft: 12,
   },
@@ -272,7 +316,51 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 8,
+  },
+  modernCard: {
+    width: 280,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 20,
+    padding: 16,
+    marginRight: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardThumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: 16,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardDate: {
+    fontSize: 14,
+    color: '#B0B0B0',
+    marginLeft: 6,
+    fontWeight: '400',
   },
   emptyState: {
     alignItems: 'center',
@@ -282,7 +370,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
     marginTop: 20,
     marginBottom: 12,

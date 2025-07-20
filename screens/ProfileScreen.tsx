@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Share2, Settings, Grid2x2 as Grid, Camera, UserPlus, UserMinus, MessageCircle, Crown, DollarSign, Shield, MapPin, Clock, CreditCard as Edit3, Chrome as Home, TrendingUp, ArrowRight, ArrowLeft, Flag, Bell, Heart, UserCheck, Clock3, X, ChevronLeft, ChevronRight, Star, Trophy, Upload } from 'lucide-react-native';
+import { Share2, Settings, Grid2x2 as Grid, Camera, UserPlus, UserMinus, MessageCircle, Crown, DollarSign, Shield, MapPin, Clock, CreditCard as Edit3, Chrome as Home, TrendingUp, ArrowRight, ArrowLeft, Flag, Bell, Heart, UserCheck, Clock3, X, ChevronLeft, ChevronRight, Trophy, Upload, Users, Award } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import * as ImagePicker from 'expo-image-picker';
@@ -80,6 +80,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
   const buttonPulse = useSharedValue(0);
   const coverFade = useSharedValue(1);
   const notificationBounce = useSharedValue(0);
+  const hostButtonScale = useSharedValue(1);
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -160,11 +161,17 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
     Alert.alert('Comment', 'Comment functionality would be implemented here');
   };
 
+  const handleRegisterAsHost = () => {
+    hostButtonScale.value = withSpring(0.95, {}, () => {
+      hostButtonScale.value = withSpring(1);
+    });
+    router.push('/host-registration');
+  };
+
   // Don't render if no user data
   if (!user || !currentUser) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6C5CE7" />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -252,6 +259,10 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
     };
   });
 
+  const hostButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: hostButtonScale.value }],
+  }));
+
   const renderPost = ({ item, index }: { item: Post; index: number }) => (
     <TouchableOpacity
       style={[styles.gridItem, { marginRight: (index + 1) % 3 === 0 ? 0 : 6 }]}
@@ -261,7 +272,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
         <Image source={{ uri: item.image }} style={styles.gridImage} />
       ) : (
         <LinearGradient
-          colors={['rgba(108, 92, 231, 0.3)', 'rgba(108, 92, 231, 0.1)']}
+          colors={['rgba(108, 92, 231, 0.15)', 'rgba(108, 92, 231, 0.05)']}
           style={styles.gridPlaceholder}
         >
           <Text style={styles.gridPlaceholderText} numberOfLines={3}>
@@ -277,15 +288,27 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
     </TouchableOpacity>
   );
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, index) => (
-      <Star
-        key={index}
-        size={16}
-        color={index < Math.floor(rating) ? '#FFD700' : '#666666'}
-        fill={index < Math.floor(rating) ? '#FFD700' : 'transparent'}
-      />
-    ));
+  const renderFlags = (rating: number) => {
+    const flagColors = ['#FF4B4B', '#FF914D', '#FFC107', '#A3D977', '#4CAF50'];
+    const filledFlags = Math.floor(rating);
+    
+    return (
+      <View style={styles.flagContainer}>
+        {Array.from({ length: 5 }, (_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.flagIcon,
+              {
+                backgroundColor: index < filledFlags ? flagColors[index] : '#3A3A3A',
+              }
+            ]}
+          >
+            <Flag size={12} color="#FFFFFF" fill="#FFFFFF" />
+          </View>
+        ))}
+      </View>
+    );
   };
 
   if (!fontsLoaded) {
@@ -368,7 +391,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
                 {user?.location ?? 'Unknown Location'}
               </Text>
               <Text style={[styles.ageText, fontsLoaded ? { fontFamily: 'Inter_400Regular' } : {}]}>
-                • {user?.age ?? '??'}
+                {user?.age ? ` • ${user.age}` : ''}
               </Text>
             </View>
             
@@ -399,17 +422,12 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
             </View>
           </View>
 
-          {/* Professional Rating */}
+          {/* Community Trust Score */}
           {user?.isHost && (
-            <View style={styles.ratingSection}>
-              <View style={styles.starsContainer}>
-                {renderStars(4.8)}
-                <Text style={[styles.ratingNumber, { fontFamily: 'Inter_600SemiBold' }]}>
-                  4.8
-                </Text>
-              </View>
-              <Text style={[styles.ratingLabel, { fontFamily: 'Inter_400Regular' }]}>
-                Rating
+            <View style={styles.trustSection}>
+              {renderFlags(4.2)}
+              <Text style={[styles.trustLabel, { fontFamily: 'Inter_500Medium' }]}>
+                Community Trust Score
               </Text>
             </View>
           )}
@@ -417,19 +435,40 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
           {/* Clean Action Buttons */}
           <View style={styles.actionButtons}>
             {isCurrentUser ? (
-              <Animated.View style={[styles.editButton, buttonAnimatedStyle]}>
-                <TouchableOpacity onPress={handleEditProfile}>
-                  <LinearGradient
-                    colors={['#6C5CE7', '#5A4FCF']}
-                    style={styles.editButtonGradient}
+              <View>
+                <Animated.View style={[styles.editButton, buttonAnimatedStyle]}>
+                  <TouchableOpacity onPress={handleEditProfile}>
+                    <LinearGradient
+                      colors={['#6C5CE7', '#5A4FCF']}
+                      style={styles.editButtonGradient}
+                    >
+                      <Edit3 size={18} color="#FFFFFF" />
+                      <Text style={[styles.editButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
+                        Edit Profile
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+                
+                {/* Register as Host Button (if not already a host) */}
+                {!user?.isHost && (
+                  <Animated.View
+                    style={[styles.hostButton, hostButtonAnimatedStyle]}
                   >
-                    <Edit3 size={18} color="#FFFFFF" />
-                    <Text style={[styles.editButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                      Edit Profile
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </Animated.View>
+                    <TouchableOpacity onPress={handleRegisterAsHost}>
+                      <LinearGradient
+                        colors={['#6C5CE7', '#5A4FCF']}
+                        style={styles.hostButtonGradient}
+                      >
+                        <Crown size={18} color="#FFFFFF" />
+                        <Text style={[styles.hostButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
+                          Register as Host
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+              </View>
             ) : (
               <View style={styles.socialButtons}>
                 <TouchableOpacity 
@@ -690,7 +729,6 @@ const styles = StyleSheet.create({
   ageText: {
     fontSize: 16,
     color: '#B0B0B0',
-    marginLeft: 12,
   },
   bio: {
     fontSize: 16,
@@ -727,25 +765,31 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '400',
   },
-  ratingSection: {
+  trustSection: {
     alignItems: 'center',
     marginBottom: 32,
   },
-  starsContainer: {
+  flagContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
-    gap: 4,
   },
-  ratingNumber: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFD700',
-    marginLeft: 12,
+  flagIcon: {
+    width: 32,
+    height: 24,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  ratingLabel: {
-    fontSize: 13,
+  trustLabel: {
+    fontSize: 14,
     color: '#B0B0B0',
+    fontWeight: '500',
   },
   actionButtons: {
     width: '100%',
@@ -758,6 +802,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 6,
+    marginBottom: 16,
   },
   editButtonGradient: {
     flexDirection: 'row',
@@ -768,6 +813,28 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   editButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  hostButton: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hostButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    gap: 10,
+  },
+  hostButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
