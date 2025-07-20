@@ -325,29 +325,6 @@ export default function TrendingScreen() {
               <Text style={styles.shortsText}>Shorts</Text>
             </View>
           )}
-
-          {/* Stats overlay */}
-          <View style={styles.statsOverlay}>
-            <View style={styles.statItem}>
-              <TouchableOpacity
-                style={styles.likeButton}
-                onPress={handleLikePress}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Heart
-                  size={14}
-                  color={post.isLiked ? '#E74C3C' : '#EAEAEA'}
-                  fill={post.isLiked ? '#E74C3C' : 'transparent'}
-                />
-              </TouchableOpacity>
-              <Text style={styles.statText}>{formatNumber(post.likes)}</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Eye size={12} color="#999999" />
-              <Text style={styles.statTextMuted}>{formatNumber(post.views)}</Text>
-            </View>
-          </View>
         </ImageBackground>
       </AnimatedTouchableOpacity>
     );

@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Plus, FileText, Calendar } from 'lucide-react-native';
 import ImageViewerModal from './ImageViewerModal';
 import AddNoteModal from './AddNoteModal';
+import CurrencyNoteCard from './CurrencyNoteCard';
 
 interface Note {
   id: string;
@@ -196,11 +197,21 @@ export default function BulletinBoardSection({ isCurrentUser }: BulletinBoardSec
   };
 
   const renderNote = ({ item, index }: { item: Note; index: number }) => (
-    <ModernNoteCard
-      note={item}
-      onImagePress={handleImagePress}
-      index={index}
-    />
+    <>
+      {item.type === 'currency' ? (
+        <CurrencyNoteCard
+          note={item}
+          onImagePress={handleImagePress}
+          index={index}
+        />
+      ) : (
+        <ModernNoteCard
+          note={item}
+          onImagePress={handleImagePress}
+          index={index}
+        />
+      )}
+    </>
   );
 
   const renderEmptyState = () => (

@@ -69,6 +69,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
   const [userPosts, setUserPosts] = useState<Post[]>(
     mockPosts.filter(post => post?.user?.id === actualUserId)
   );
+  const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'saved'>('posts');
   const [isFollowing, setIsFollowing] = useState(user.isFollowing || false);
   const [showFullScreenPost, setShowFullScreenPost] = useState(false);
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
@@ -506,31 +507,99 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
         {/* Professional Bulletin Board */}
         <BulletinBoardSection isCurrentUser={isCurrentUser} />
 
-        {/* Clean Posts Grid */}
-        <View style={styles.postsSection}>
-          <View style={styles.postsHeader}>
-            <Grid size={22} color="#FFFFFF" />
-            <Text style={[styles.postsHeaderText, { fontFamily: 'Inter_600SemiBold' }]}>
-              Posts
-            </Text>
+        {/* Content Tabs */}
+        <View style={styles.tabsContainer}>
+          <View style={styles.tabsRow}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
+              onPress={() => setActiveTab('posts')}
+            >
+              <Grid size={18} color={activeTab === 'posts' ? '#6C5CE7' : '#B0B0B0'} />
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'posts' && styles.activeTabText,
+                { fontFamily: 'Inter_500Medium' }
+              ]}>
+                Posts
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'reels' && styles.activeTab]}
+              onPress={() => setActiveTab('reels')}
+            >
+              <Play size={18} color={activeTab === 'reels' ? '#6C5CE7' : '#B0B0B0'} />
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'reels' && styles.activeTabText,
+                { fontFamily: 'Inter_500Medium' }
+              ]}>
+                Reels
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'saved' && styles.activeTab]}
+              onPress={() => setActiveTab('saved')}
+            >
+              <Heart size={18} color={activeTab === 'saved' ? '#6C5CE7' : '#B0B0B0'} />
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'saved' && styles.activeTabText,
+                { fontFamily: 'Inter_500Medium' }
+              ]}>
+                Saved
+              </Text>
+            </TouchableOpacity>
           </View>
+        </View>
 
-          {userPosts.length > 0 ? (
-            <FlatList
-              data={userPosts}
-              renderItem={renderPost}
-              numColumns={3}
-              scrollEnabled={false}
-              contentContainerStyle={styles.postsGrid}
-              columnWrapperStyle={styles.row}
-            />
-          ) : (
+        {/* Content Based on Active Tab */}
+        <View style={styles.postsSection}>
+          {activeTab === 'posts' && (
+            <>
+              {userPosts.length > 0 ? (
+                <FlatList
+                  data={userPosts}
+                  renderItem={renderPost}
+                  numColumns={3}
+                  scrollEnabled={false}
+                  contentContainerStyle={styles.postsGrid}
+                  columnWrapperStyle={styles.row}
+                />
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={[styles.emptyText, { fontFamily: 'Inter_600SemiBold' }]}>
+                    No posts yet
+                  </Text>
+                  <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
+                    {isCurrentUser ? 'Share your creative work' : `${user?.username || 'User'} hasn't posted yet`}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+          
+          {activeTab === 'reels' && (
             <View style={styles.emptyState}>
+              <Play size={48} color="#6C5CE7" />
               <Text style={[styles.emptyText, { fontFamily: 'Inter_600SemiBold' }]}>
-                No posts yet
+                No reels yet
               </Text>
               <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
-                {isCurrentUser ? 'Share your creative work' : `${user?.username || 'User'} hasn't posted yet`}
+                {isCurrentUser ? 'Create your first reel' : `${user?.username || 'User'} hasn't shared any reels`}
+              </Text>
+            </View>
+          )}
+          
+          {activeTab === 'saved' && (
+            <View style={styles.emptyState}>
+              <Heart size={48} color="#6C5CE7" />
+              <Text style={[styles.emptyText, { fontFamily: 'Inter_600SemiBold' }]}>
+                No saved posts
+              </Text>
+              <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
+                {isCurrentUser ? 'Save posts you love' : 'Saved posts are private'}
               </Text>
             </View>
           )}
@@ -790,6 +859,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#B0B0B0',
     fontWeight: '500',
+  },
+  tabsContainer: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    marginBottom: 8,
+  },
+  tabsRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 24,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 6,
+  },
+  activeTab: {
+    backgroundColor: '#6C5CE7',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#B0B0B0',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   actionButtons: {
     width: '100%',
