@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 
@@ -81,15 +81,23 @@ const isValidUser = (data: any): data is User => {
 
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(userReducer, initialState);
+  const isMountedRef = useRef(true);
 
   // Load user data on app start
   useEffect(() => {
+    isMountedRef.current = true;
     loadUserData();
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const loadUserData = async () => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
+      if (isMountedRef.current) {
+        dispatch({ type: 'SET_LOADING', payload: true });
+      }
       
       const storedUserData = await AsyncStorage.getItem(USER_STORAGE_KEY);
       
@@ -98,7 +106,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const parsedUser = JSON.parse(storedUserData);
           
           if (isValidUser(parsedUser)) {
-            dispatch({ type: 'SET_USER', payload: parsedUser });
+            if (isMountedRef.current) {
+              dispatch({ type: 'SET_USER', payload: parsedUser });
+            }
             return;
           }
         } catch (parseError) {
@@ -113,23 +123,31 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       // No valid stored user data
-      dispatch({ type: 'SET_USER', payload: null });
+      if (isMountedRef.current) {
+        dispatch({ type: 'SET_USER', payload: null });
+      }
       
     } catch (error) {
       console.error('Error loading user data:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data' });
-      dispatch({ type: 'SET_USER', payload: null });
+      if (isMountedRef.current) {
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load user data' });
+        dispatch({ type: 'SET_USER', payload: null });
+      }
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'SET_ERROR', payload: null });
+      if (isMountedRef.current) {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        dispatch({ type: 'SET_ERROR', payload: null });
+      }
 
       // Validate input
       if (!email?.trim() || !password?.trim()) {
-        dispatch({ type: 'SET_ERROR', payload: 'Email and password are required' });
+        if (isMountedRef.current) {
+          dispatch({ type: 'SET_ERROR', payload: 'Email and password are required' });
+        }
         return false;
       }
 
@@ -142,17 +160,23 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Store user data safely
       try {
         await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-        dispatch({ type: 'SET_USER', payload: userData });
+        if (isMountedRef.current) {
+          dispatch({ type: 'SET_USER', payload: userData });
+        }
         return true;
       } catch (storageError) {
         console.error('Failed to store user data:', storageError);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to save login data' });
+        if (isMountedRef.current) {
+          dispatch({ type: 'SET_ERROR', payload: 'Failed to save login data' });
+        }
         return false;
       }
       
     } catch (error) {
       console.error('Login error:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Login failed. Please try again.' });
+      if (isMountedRef.current) {
+        dispatch({ type: 'SET_ERROR', payload: 'Login failed. Please try again.' });
+      }
       return false;
     }
   };
@@ -160,10 +184,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async (): Promise<void> => {
     try {
       await AsyncStorage.removeItem(USER_STORAGE_KEY);
-      dispatch({ type: 'LOGOUT' });
+      if (isMountedRef.current) {
+        dispatch({ type: 'LOGOUT' });
+      }
     } catch (error) {
       console.error('Logout error:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Logout failed' });
+      if (isMountedRef.current) {
+        dispatch({ type: 'SET_ERROR', payload: 'Logout failed' });
+      }
     }
   };
 
@@ -175,11 +203,15 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (isValidUser(updatedUser)) {
         await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
-        dispatch({ type: 'SET_USER', payload: updatedUser });
+        if (isMountedRef.current) {
+          dispatch({ type: 'SET_USER', payload: updatedUser });
+        }
       }
     } catch (error) {
       console.error('Update user error:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to update user data' });
+      if (isMountedRef.current) {
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to update user data' });
+      }
     }
   };
 
