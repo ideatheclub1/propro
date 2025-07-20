@@ -400,7 +400,6 @@ export default function TrendingScreen() {
 
   if (!fontsLoaded) {
     return (
-    return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
