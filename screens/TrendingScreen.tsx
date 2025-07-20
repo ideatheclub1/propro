@@ -399,6 +399,7 @@ export default function TrendingScreen() {
   );
 
   if (!fontsLoaded) {
+    return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
