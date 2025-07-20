@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
-import 'react-native-web';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { CommentProvider } from '@/contexts/CommentContext';
@@ -10,9 +9,6 @@ import { UserProvider } from '@/contexts/UserContext';
 
 export default function RootLayout() {
   useFrameworkReady();
-  
-  // Force Metro bundler to include Platform polyfill for web
-  console.log(Platform.OS);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
