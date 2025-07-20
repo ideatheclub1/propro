@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import 'react-native-web';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
