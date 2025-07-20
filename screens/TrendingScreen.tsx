@@ -393,13 +393,13 @@ export default function TrendingScreen() {
   const renderMasonryColumn = (columnData: TrendingPost[], columnIndex: number) => (
     <View style={styles.masonryColumn}>
       {columnData.map((post, index) => (
-        <PostItem key={post.id} post={post} index={columnIndex} />
+        <PostItem key={post.id} post={post} index={columnIndex} section="trending" />
       ))}
     </View>
   );
 
   if (!fontsLoaded) {
-            <PostItem key={post.id} post={post} index={columnIndex} section="trending" />
+    return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
@@ -601,7 +601,7 @@ export default function TrendingScreen() {
               </TouchableOpacity>
             </View>
           </BlurView>
-        <PostItem key={post.id} post={post} index={columnIndex} section="trending" />
+        </View>
       </Modal>
     </SafeAreaView>
   );
