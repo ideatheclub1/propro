@@ -259,7 +259,7 @@ export default function TrendingScreen() {
     ? trendingPosts 
     : trendingPosts.filter(post => post.genre === selectedGenre);
 
-  const PostItem = React.memo(({ post, index }: { post: TrendingPost; index: number }) => {
+  const PostItem = React.memo(({ post, index, section = 'trending' }: { post: TrendingPost; index: number; section?: string }) => {
     const scale = useSharedValue(1);
     const opacity = useSharedValue(1);
 
@@ -318,25 +318,13 @@ export default function TrendingScreen() {
             style={styles.gradientOverlay}
           />
           
-          {/* Duration badge */}
-          <View style={styles.durationBadge}>
-            <Clock size={10} color="#EAEAEA" />
-            <Text style={styles.durationText}>{post.duration}</Text>
-          </View>
-
-          {/* Trending badge */}
-          {post.isTrending && (
-            <View style={styles.trendingBadge}>
-              <Flame size={12} color="#EAEAEA" fill="#EAEAEA" />
+          {/* Shorts logo for trending section */}
+          {section === 'trending' && (
+            <View style={styles.shortsLogo}>
+              <Play size={24} color="#C9B6FF" fill="#C9B6FF" />
+              <Text style={styles.shortsText}>Shorts</Text>
             </View>
           )}
-
-          {/* Play icon overlay */}
-          <View style={styles.playOverlay}>
-            <View style={styles.playButton}>
-              <Play size={16} color="#EAEAEA" fill="#EAEAEA" />
-            </View>
-          </View>
 
           {/* Stats overlay */}
           <View style={styles.statsOverlay}>
@@ -411,7 +399,7 @@ export default function TrendingScreen() {
   );
 
   if (!fontsLoaded) {
-    return (
+            <PostItem key={post.id} post={post} index={columnIndex} section="trending" />
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
@@ -613,7 +601,7 @@ export default function TrendingScreen() {
               </TouchableOpacity>
             </View>
           </BlurView>
-        </View>
+        <PostItem key={post.id} post={post} index={columnIndex} section="trending" />
       </Modal>
     </SafeAreaView>
   );
@@ -748,52 +736,30 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
   },
-  durationBadge: {
+  shortsLogo: {
     position: 'absolute',
-    top: 8,
+    bottom: 12,
     left: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  durationText: {
-    color: '#EAEAEA',
-    fontSize: 10,
-    fontWeight: '600',
-    marginLeft: 3,
-  },
-  trendingBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(138, 43, 226, 0.9)',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#8A2BE2',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 6,
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
     elevation: 4,
   },
-  playOverlay: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -16 }, { translateY: -16 }],
-  },
-  playButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  shortsText: {
+    color: '#C9B6FF',
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   statsOverlay: {
     position: 'absolute',

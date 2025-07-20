@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,19 +8,248 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  Platform,
+  Dimensions,
+  Animated as RNAnimated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
-import { MessageCircle, CreditCard as Edit } from 'lucide-react-native';
-import { mockConversations } from '../data/mockData';
-import { Conversation } from '../types';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedGestureHandler,
+  withSpring,
+  withTiming,
+  withRepeat,
+  withSequence,
+  interpolate,
+  runOnJS,
+  FadeIn,
+  SlideInLeft,
+  SlideInRight,
+} from 'react-native-reanimated';
+import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
+import { MessageCircle, Edit2, Pin, Archive, VolumeX, MoreHorizontal, Search, Plus } from 'lucide-react-native';
+import { mockConversations, mockUsers } from '../data/mockData';
+import { Conversation, User } from '../types';
+import { useUser } from '@/contexts/UserContext';
 
-export default function MessagesScreen({ navigation }: any) {
+const { width, height } = Dimensions.get('window');
+const SWIPE_THRESHOLD = 80;
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
+interface MessageCardProps {
+  conversation: Conversation;
+  onPress: (conversation: Conversation) => void;
+  onUserPress: (userId: string) => void;
+  index: number;
+}
+
+const MessageCard: React.FC<MessageCardProps> = ({ conversation, onPress, onUserPress, index }) => {
+  const translateX = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  const [showActions, setShowActions] = useState(false);
+
+  const otherUser = conversation.participants.find(p => p.id !== '1');
+  if (!otherUser) return null;
+
+  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
+    onStart: () => {
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+    },
+    onActive: (event) => {
+      translateX.value = event.translationX;
+      
+      if (Math.abs(event.translationX) > SWIPE_THRESHOLD) {
+        scale.value = withSpring(0.95);
+      } else {
+        scale.value = withSpring(1);
+      }
+    },
+    onEnd: (event) => {
+      if (event.translationX > SWIPE_THRESHOLD) {
+        // Swipe right - Pin/Mark as Unread
+        runOnJS(handlePinMessage)();
+      } else if (event.translationX < -SWIPE_THRESHOLD) {
+        // Swipe left - Archive/Mute
+        runOnJS(handleArchiveMessage)();
+      }
+      
+      translateX.value = withSpring(0);
+      scale.value = withSpring(1);
+    },
+  });
+
+  const handlePinMessage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert('Pinned', `Conversation with ${otherUser.username} has been pinned`);
+  };
+
+  const handleArchiveMessage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert('Archived', `Conversation with ${otherUser.username} has been archived`);
+  };
+
+  const handleCardPress = () => {
+    scale.value = withSequence(
+      withSpring(0.96, { damping: 15 }),
+      withSpring(1, { damping: 15 })
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress(conversation);
+  };
+
+  const handleUserPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onUserPress(otherUser.id);
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { scale: scale.value }
+    ],
+    opacity: opacity.value,
+  }));
+
+  const rightActionsStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], 'clamp'),
+    transform: [
+      { translateX: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [0, 50], 'clamp') }
+    ],
+  }));
+
+  const leftActionsStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [0, 1], 'clamp'),
+    transform: [
+      { translateX: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [-50, 0], 'clamp') }
+    ],
+  }));
+
+  // Story ring animation for users with active stories
+  const storyRingGlow = useSharedValue(0);
+  const hasStory = Math.random() > 0.5; // Mock story status
+
+  React.useEffect(() => {
+    if (hasStory) {
+      storyRingGlow.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 1500 }),
+          withTiming(0.3, { duration: 1500 })
+        ),
+        -1,
+        true
+      );
+    }
+  }, [hasStory]);
+
+  const storyRingStyle = useAnimatedStyle(() => ({
+    shadowOpacity: hasStory ? interpolate(storyRingGlow.value, [0, 1], [0.3, 0.8]) : 0,
+    shadowRadius: hasStory ? interpolate(storyRingGlow.value, [0, 1], [8, 16]) : 0,
+  }));
+
+  return (
+    <View style={styles.messageCardContainer}>
+      {/* Left Actions (Pin/Mark as Unread) */}
+      <Animated.View style={[styles.leftActions, leftActionsStyle]}>
+        <View style={styles.actionButton}>
+          <Pin size={20} color="#6C5CE7" />
+        </View>
+      </Animated.View>
+
+      {/* Right Actions (Archive/Mute) */}
+      <Animated.View style={[styles.rightActions, rightActionsStyle]}>
+        <View style={styles.actionButton}>
+          <Archive size={20} color="#EF4444" />
+        </View>
+      </Animated.View>
+
+      {/* Message Card */}
+      <PanGestureHandler onGestureEvent={gestureHandler}>
+        <AnimatedTouchableOpacity
+          style={[styles.messageCard, animatedStyle]}
+          onPress={handleCardPress}
+          entering={FadeIn.delay(index * 100).springify()}
+        >
+          <BlurView intensity={Platform.OS === 'ios' ? 20 : 0} style={styles.cardBlur}>
+            <View style={styles.cardContent}>
+              {/* Avatar with Story Ring */}
+              <TouchableOpacity onPress={handleUserPress}>
+                <Animated.View style={[styles.avatarContainer, storyRingStyle]}>
+                  {hasStory && (
+                    <View style={styles.storyRing}>
+                      <LinearGradient
+                        colors={['#6C5CE7', '#8B5CF6', '#A855F7']}
+                        style={styles.storyGradient}
+                      />
+                    </View>
+                  )}
+                  <Image source={{ uri: otherUser.avatar }} style={styles.avatar} />
+                  <View style={styles.onlineIndicator} />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {/* Message Content */}
+              <View style={styles.messageContent}>
+                <View style={styles.messageHeader}>
+                  <TouchableOpacity onPress={handleUserPress}>
+                    <Text style={styles.username}>@{otherUser.username}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.timestampContainer}>
+                    <Text style={styles.timestamp}>• {conversation.lastMessage.timestamp}</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.lastMessage} numberOfLines={2}>
+                  {conversation.lastMessage.content}
+                </Text>
+              </View>
+
+              {/* Unread Badge */}
+              {conversation.unreadCount > 0 && (
+                <Animated.View 
+                  style={styles.unreadBadge}
+                  entering={SlideInRight.springify()}
+                >
+                  <Text style={styles.unreadCount}>{conversation.unreadCount}</Text>
+                </Animated.View>
+              )}
+            </View>
+          </BlurView>
+        </AnimatedTouchableOpacity>
+      </PanGestureHandler>
+    </View>
+  );
+};
+
+export default function MessagesScreen() {
   const router = useRouter();
+  const { user: currentUser } = useUser();
   const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
+  const [onlineUsers, setOnlineUsers] = useState<User[]>(mockUsers.slice(0, 6));
+  
+  // FAB Animation
+  const fabScale = useSharedValue(1);
+  const fabGlow = useSharedValue(0);
+
+  React.useEffect(() => {
+    // FAB glow animation
+    fabGlow.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2000 }),
+        withTiming(0.3, { duration: 2000 })
+      ),
+      -1,
+      true
+    );
+  }, []);
 
   const handleConversationPress = (conversation: Conversation) => {
-    const otherUser = conversation.participants.find(p => p.id !== '1'); // Assuming '1' is current user
+    const otherUser = conversation.participants.find(p => p.id !== '1');
     if (otherUser) {
       router.push({
         pathname: '/conversation',
@@ -30,16 +259,15 @@ export default function MessagesScreen({ navigation }: any) {
   };
 
   const handleUserPress = (userId: string) => {
-    if (userId === '1') {
+    if (!userId || !currentUser?.id) return;
+    
+    if (userId === currentUser.id) {
       Alert.alert(
         'Your Profile',
-        'You are viewing your own profile. To make changes, go to your settings.',
+        'You are viewing your own profile.',
         [
           { text: 'OK', style: 'cancel' },
-          { 
-            text: 'Go to Profile', 
-            onPress: () => router.push('/(tabs)/profile')
-          }
+          { text: 'Go to Profile', onPress: () => router.push('/(tabs)/profile') }
         ]
       );
       return;
@@ -51,89 +279,141 @@ export default function MessagesScreen({ navigation }: any) {
   };
 
   const handleNewMessage = () => {
+    fabScale.value = withSequence(
+      withSpring(0.9, { damping: 15 }),
+      withSpring(1, { damping: 15 })
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert('New Message', 'Select a user to start a new conversation');
   };
+
+  const handleSearch = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/(tabs)/search');
+  };
+
+  const fabAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabScale.value }],
+    shadowOpacity: interpolate(fabGlow.value, [0, 1], [0.4, 0.8]),
+    shadowRadius: interpolate(fabGlow.value, [0, 1], [12, 20]),
+  }));
+
+  const renderOnlineUser = ({ item, index }: { item: User; index: number }) => (
+    <AnimatedTouchableOpacity
+      style={styles.onlineUserContainer}
+      onPress={() => handleUserPress(item.id)}
+      entering={SlideInLeft.delay(index * 50).springify()}
+    >
+      <View style={styles.onlineUserImageContainer}>
+        <Image source={{ uri: item.avatar }} style={styles.onlineUserImage} />
+        <View style={styles.onlineUserIndicator} />
+      </View>
+      <Text style={styles.onlineUserName} numberOfLines={1}>
+        {item.username}
+      </Text>
+    </AnimatedTouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <Animated.View style={styles.emptyState} entering={FadeIn.delay(300)}>
+      <MessageCircle size={64} color="#6C5CE7" />
+      <Text style={styles.emptyTitle}>No messages yet</Text>
+      <Text style={styles.emptySubtitle}>
+        Connect with people and start meaningful conversations
+      </Text>
+      <TouchableOpacity style={styles.startChatButton} onPress={handleNewMessage}>
+        <LinearGradient
+          colors={['#6C5CE7', '#5A4FCF']}
+          style={styles.startChatGradient}
+        >
+          <MessageCircle size={16} color="#FFFFFF" />
+          <Text style={styles.startChatText}>Start Chatting</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+
+  if (!currentUser) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#2A1A55', '#1E0D36', '#2A1A55']}
+        colors={['#1E1E1E', '#301E5A', '#1E1E1E']}
         style={styles.background}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerBackground} />
-          <View style={styles.headerLeft}>
-            <MessageCircle size={28} color="#e0aaff" />
-            <Text style={styles.headerTitle}>Messages</Text>
+        <Animated.View style={styles.header} entering={FadeIn.duration(800)}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <MessageCircle size={28} color="#6C5CE7" />
+              <Text style={styles.headerTitle}>Messages</Text>
+            </View>
+            
+            <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+              <Search size={24} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={handleNewMessage} style={styles.newMessageButton}>
-            <Edit size={24} color="#9B61E5" />
-          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Online Users Section */}
+        <Animated.View style={styles.onlineSection} entering={FadeIn.delay(200)}>
+          <Text style={styles.sectionTitle}>Active Now</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.onlineList}
+          >
+            {onlineUsers.map((user, index) => (
+              <View key={user.id}>
+                {renderOnlineUser({ item: user, index })}
+              </View>
+            ))}
+          </ScrollView>
+        </Animated.View>
+
+        {/* Messages List */}
+        <View style={styles.messagesSection}>
+          <Text style={styles.sectionTitle}>Recent</Text>
+          
+          {conversations.length > 0 ? (
+            <ScrollView
+              style={styles.messagesList}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.messagesContent}
+            >
+              {conversations.map((conversation, index) => (
+                <MessageCard
+                  key={conversation.id}
+                  conversation={conversation}
+                  onPress={handleConversationPress}
+                  onUserPress={handleUserPress}
+                  index={index}
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            renderEmptyState()
+          )}
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {conversations.length > 0 ? (
-            conversations.map(conversation => {
-              const otherUser = conversation.participants.find(p => p.id !== '1');
-              if (!otherUser) return null;
-
-              return (
-                <TouchableOpacity
-                  key={conversation.id}
-                  onPress={() => handleConversationPress(conversation)}
-                >
-                  <LinearGradient
-                    colors={['rgba(139, 92, 246, 0.1)', 'rgba(139, 92, 246, 0.05)']}
-                    style={styles.conversationCard}
-                  >
-                    <View style={styles.avatarContainer}>
-                      <TouchableOpacity onPress={() => handleUserPress(otherUser.id)}>
-                        <Image source={{ uri: otherUser.avatar }} style={styles.avatar} />
-                      </TouchableOpacity>
-                      {conversation.unreadCount > 0 && (
-                        <View style={styles.onlineIndicator} />
-                      )}
-                    </View>
-                    
-                    <View style={styles.conversationInfo}>
-                      <View style={styles.conversationHeader}>
-                        <TouchableOpacity onPress={() => handleUserPress(otherUser.id)}>
-                          <Text style={styles.username}>{otherUser.username}</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.timestamp}>{conversation.lastMessage.timestamp}</Text>
-                      </View>
-                      <Text style={styles.lastMessage} numberOfLines={1}>
-                        {conversation.lastMessage.content}
-                      </Text>
-                    </View>
-                    
-                    {conversation.unreadCount > 0 && (
-                      <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadCount}>{conversation.unreadCount}</Text>
-                      </View>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              );
-            })
-          ) : (
-            <View style={styles.emptyState}>
-              <MessageCircle size={64} color="#a855f7" style={styles.emptyIcon} />
-              <Text style={styles.emptyText}>No conversations yet</Text>
-              <Text style={styles.emptySubtext}>Start a conversation with someone!</Text>
-              <TouchableOpacity style={styles.startChatButton} onPress={handleNewMessage}>
-                <LinearGradient
-                  colors={['#e0aaff', '#c77dff', '#9d4edd']}
-                  style={styles.startChatGradient}
-                >
-                  <Edit size={16} color="#ffffff" />
-                  <Text style={styles.startChatText}>Start New Chat</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
-        </ScrollView>
+        {/* Floating Action Button */}
+        <AnimatedTouchableOpacity
+          style={[styles.fab, fabAnimatedStyle]}
+          onPress={handleNewMessage}
+        >
+          <LinearGradient
+            colors={['#6C5CE7', '#5A4FCF']}
+            style={styles.fabGradient}
+          >
+            <Edit2 size={24} color="#FFFFFF" strokeWidth={2} />
+          </LinearGradient>
+        </AnimatedTouchableOpacity>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -142,25 +422,31 @@ export default function MessagesScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1E1E1E',
   },
   background: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E1E1E',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
   header: {
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'android' ? 16 : 0,
+    paddingBottom: 20,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    paddingTop: 10,
-    backgroundColor: '#121212',
-  },
-  headerBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#121212',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -168,124 +454,302 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#FFFFFF',
     marginLeft: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
-  newMessageButton: {
-    padding: 8,
-    backgroundColor: '#121212',
-    borderRadius: 20,
+  searchButton: {
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#9B61E5',
+    borderColor: 'rgba(108, 92, 231, 0.3)',
   },
-  conversationCard: {
+  onlineSection: {
+    paddingVertical: 16,
+    paddingBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginHorizontal: 24,
+    marginBottom: 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  onlineList: {
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  onlineUserContainer: {
+    alignItems: 'center',
+    width: 72,
+  },
+  onlineUserImageContainer: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  onlineUserImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: '#6C5CE7',
+  },
+  onlineUserIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#00D46A',
+    borderWidth: 3,
+    borderColor: '#1E1E1E',
+  },
+  onlineUserName: {
+    fontSize: 12,
+    color: '#E0E0E0',
+    fontWeight: '500',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  messagesSection: {
+    flex: 1,
+    paddingTop: 8,
+  },
+  messagesList: {
+    flex: 1,
+  },
+  messagesContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 100, // Space for FAB
+  },
+  messageCardContainer: {
+    position: 'relative',
+    marginVertical: 6,
+  },
+  leftActions: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 16,
+    zIndex: 1,
+  },
+  rightActions: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 16,
+    zIndex: 1,
+  },
+  actionButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  messageCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginHorizontal: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  cardBlur: {
+    backgroundColor: Platform.OS === 'android' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+  },
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#9B61E5',
-    backgroundColor: '#121212',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 16,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  storyRing: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    padding: 3,
+  },
+  storyGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 36,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#9B61E5',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: '#1E1E1E',
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    bottom: 3,
+    right: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#00D46A',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#1E1E1E',
+    shadowColor: '#00D46A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  conversationInfo: {
+  messageContent: {
     flex: 1,
   },
-  conversationHeader: {
+  messageHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
   username: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  timestampContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   timestamp: {
     fontSize: 12,
-    color: '#A0A0A0',
-    opacity: 0.8,
+    color: '#E0E0E0',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   lastMessage: {
     fontSize: 14,
-    color: '#A0A0A0',
+    color: '#E0E0E0',
+    lineHeight: 20,
+    opacity: 0.8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   unreadBadge: {
-    backgroundColor: '#9B61E5',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
+    backgroundColor: '#6C5CE7',
+    borderRadius: 16,
+    minWidth: 32,
+    height: 32,
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    marginLeft: 12,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 6,
   },
   unreadCount: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFFFFF',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   emptyState: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-    paddingTop: 100,
+    alignItems: 'center',
     paddingHorizontal: 40,
+    paddingVertical: 60,
   },
-  emptyIcon: {
-    opacity: 0.5,
-    marginBottom: 20,
-  },
-  emptyText: {
-    fontSize: 20,
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginBottom: 8,
+    marginTop: 24,
+    marginBottom: 12,
     textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
-  emptySubtext: {
+  emptySubtitle: {
     fontSize: 16,
-    color: '#A0A0A0',
+    color: '#E0E0E0',
     textAlign: 'center',
-    marginBottom: 30,
+    lineHeight: 24,
+    marginBottom: 32,
+    opacity: 0.8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   startChatButton: {
     borderRadius: 25,
     overflow: 'hidden',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   startChatGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
+    gap: 8,
   },
   startChatText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#FFFFFF',
-    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(108, 92, 231, 0.5)',
   },
 });

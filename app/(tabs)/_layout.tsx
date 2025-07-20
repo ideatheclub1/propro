@@ -38,25 +38,51 @@ export default function TabLayout() {
         tabBarShowLabel: false,
         tabBarIconStyle: {
           marginTop: 4,
-          shadowColor: '#6C5CE7',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
+        },
+        tabBarItemStyle: {
+          borderRadius: 20,
+          marginHorizontal: 4,
         },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <Home size={size} color={color} strokeWidth={2} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <View style={{
+              padding: 8,
+              borderRadius: 16,
+              backgroundColor: focused ? 'rgba(108, 92, 231, 0.2)' : 'transparent',
+              borderWidth: focused ? 1 : 0,
+              borderColor: focused ? '#6C5CE7' : 'transparent',
+              shadowColor: focused ? '#6C5CE7' : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: focused ? 0.4 : 0,
+              shadowRadius: focused ? 8 : 0,
+              elevation: focused ? 4 : 0,
+            }}>
+              <Home size={size} color={color} strokeWidth={2} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="reels"
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <Play size={size} color={color} strokeWidth={2} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <View style={{
+              padding: 8,
+              borderRadius: 16,
+              backgroundColor: focused ? 'rgba(108, 92, 231, 0.2)' : 'transparent',
+              borderWidth: focused ? 1 : 0,
+              borderColor: focused ? '#6C5CE7' : 'transparent',
+              shadowColor: focused ? '#6C5CE7' : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: focused ? 0.4 : 0,
+              shadowRadius: focused ? 8 : 0,
+              elevation: focused ? 4 : 0,
+            }}>
+              <Play size={size} color={color} strokeWidth={2} />
+            </View>
           ),
         }}
       />
@@ -76,6 +102,7 @@ export default function TabLayout() {
               shadowOpacity: focused ? 0.6 : 0,
               shadowRadius: focused ? 8 : 0,
               elevation: focused ? 6 : 0,
+              transform: focused ? [{ scale: 1.1 }] : [{ scale: 1 }],
             }}>
               <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
             </View>
@@ -85,24 +112,63 @@ export default function TabLayout() {
       <Tabs.Screen
         name="trending"
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <TrendingUp size={size} color={color} strokeWidth={2} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <View style={{
+              padding: 8,
+              borderRadius: 16,
+              backgroundColor: focused ? 'rgba(108, 92, 231, 0.2)' : 'transparent',
+              borderWidth: focused ? 1 : 0,
+              borderColor: focused ? '#6C5CE7' : 'transparent',
+              shadowColor: focused ? '#6C5CE7' : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: focused ? 0.4 : 0,
+              shadowRadius: focused ? 8 : 0,
+              elevation: focused ? 4 : 0,
+            }}>
+              <TrendingUp size={size} color={color} strokeWidth={2} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <Search size={size} color={color} strokeWidth={2} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <View style={{
+              padding: 8,
+              borderRadius: 16,
+              backgroundColor: focused ? 'rgba(108, 92, 231, 0.2)' : 'transparent',
+              borderWidth: focused ? 1 : 0,
+              borderColor: focused ? '#6C5CE7' : 'transparent',
+              shadowColor: focused ? '#6C5CE7' : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: focused ? 0.4 : 0,
+              shadowRadius: focused ? 8 : 0,
+              elevation: focused ? 4 : 0,
+            }}>
+              <Search size={size} color={color} strokeWidth={2} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <User size={size} color={color} strokeWidth={2} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <View style={{
+              padding: 8,
+              borderRadius: 16,
+              backgroundColor: focused ? 'rgba(108, 92, 231, 0.2)' : 'transparent',
+              borderWidth: focused ? 1 : 0,
+              borderColor: focused ? '#6C5CE7' : 'transparent',
+              shadowColor: focused ? '#6C5CE7' : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: focused ? 0.4 : 0,
+              shadowRadius: focused ? 8 : 0,
+              elevation: focused ? 4 : 0,
+            }}>
+              <User size={size} color={color} strokeWidth={2} />
+            </View>
           ),
         }}
       />
@@ -110,8 +176,21 @@ export default function TabLayout() {
         name="messages"
         options={{
           href: null, // Hide from tab bar since it's accessible via header
-          tabBarIcon: ({ size, color }) => (
-            <MessageCircle size={size} color={color} strokeWidth={2} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <View style={{
+              padding: 8,
+              borderRadius: 16,
+              backgroundColor: focused ? 'rgba(108, 92, 231, 0.2)' : 'transparent',
+              borderWidth: focused ? 1 : 0,
+              borderColor: focused ? '#6C5CE7' : 'transparent',
+              shadowColor: focused ? '#6C5CE7' : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: focused ? 0.4 : 0,
+              shadowRadius: focused ? 8 : 0,
+              elevation: focused ? 4 : 0,
+            }}>
+              <MessageCircle size={size} color={color} strokeWidth={2} />
+            </View>
           ),
         }}
       />
