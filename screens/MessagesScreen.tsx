@@ -31,7 +31,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
-import { MessageCircle, Pin, Archive, VolumeX, Search, Plus } from 'lucide-react-native';
+import { MessageCircle, LocationEdit as Edit2, Pin, Archive, VolumeX, MoveHorizontal as MoreHorizontal, Search, Plus } from 'lucide-react-native';
 import { mockConversations, mockUsers } from '../data/mockData';
 import { Conversation, User } from '../types';
 import { useUser } from '@/contexts/UserContext';
@@ -411,7 +411,7 @@ export default function MessagesScreen() {
             colors={['#6C5CE7', '#5A4FCF']}
             style={styles.fabGradient}
           >
-            <Plus size={24} color="#FFFFFF" strokeWidth={2} />
+            <Edit2 size={24} color="#FFFFFF" strokeWidth={2} />
           </LinearGradient>
         </AnimatedTouchableOpacity>
       </LinearGradient>

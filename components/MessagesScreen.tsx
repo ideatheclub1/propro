@@ -24,7 +24,7 @@ import Animated, {
   SlideInRight,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { X, MessageCircle, Search, Plus, Heart, Clock } from 'lucide-react-native';
+import { X, MessageCircle, Search, CreditCard as Edit, Heart, Clock } from 'lucide-react-native';
 import { mockConversations, mockUsers } from '../data/mockData';
 import { Conversation, User } from '../types';
 
@@ -202,7 +202,7 @@ export default function MessagesScreen({ isVisible, onClose }: MessagesScreenPro
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.headerButton} onPress={handleNewMessage}>
-            <Plus size={20} color="#FFFFFF" />
+            <Edit size={20} color="#FFFFFF" />
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.headerButton} onPress={onClose}>

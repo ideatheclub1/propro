@@ -10,28 +10,36 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  ImageBackground,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { UserPlus, MessageCircle, Crown, MapPin, Flag, Grid2x2 as Grid, Play, Bookmark, Heart, ArrowLeft } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
+import { Share2, Settings, Grid2x2 as Grid, Camera, UserPlus, UserMinus, MessageCircle, Crown, DollarSign, Shield, MapPin, Clock, CreditCard as Edit3, Chrome as Home, TrendingUp, ArrowRight, ArrowLeft, Flag, Bell, Heart, UserCheck, Clock3, X, ChevronLeft, ChevronRight, Trophy, Upload, Users, Award } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withRepeat,
   withTiming,
+  interpolate,
+  useAnimatedScrollHandler,
+  runOnJS,
 } from 'react-native-reanimated';
 import { mockUsers, mockPosts } from '../data/mockData';
 import { Post, User } from '../types';
 import FullScreenPostViewer from '../components/FullScreenPostViewer';
+import BulletinBoardSection from '../components/BulletinBoardSection';
 import { useUser } from '@/contexts/UserContext';
 
 const { width, height } = Dimensions.get('window');
 const imageSize = (width - 56) / 3;
+const HEADER_HEIGHT = 100;
 const PROFILE_IMAGE_SIZE = 120;
 
-type MediaTab = 'posts' | 'reels' | 'saved';
 interface ProfileScreenProps {
   route?: {
     params?: {
@@ -42,6 +50,7 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ route }: ProfileScreenProps) {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
   const params = useLocalSearchParams<{ userId: string }>();
   const { user: currentUser } = useUser();
   
@@ -60,11 +69,17 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
   const [userPosts, setUserPosts] = useState<Post[]>(
     mockPosts.filter(post => post?.user?.id === actualUserId)
   );
-  const [activeTab, setActiveTab] = useState<MediaTab>('posts');
   const [isFollowing, setIsFollowing] = useState(user.isFollowing || false);
   const [showFullScreenPost, setShowFullScreenPost] = useState(false);
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
+  const [coverImage, setCoverImage] = useState('https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=800');
 
+  // Animation values
+  const scrollY = useSharedValue(0);
+  const profileGlow = useSharedValue(0);
+  const buttonPulse = useSharedValue(0);
+  const coverFade = useSharedValue(1);
+  const notificationBounce = useSharedValue(0);
   const hostButtonScale = useSharedValue(1);
 
   // Load fonts
@@ -75,9 +90,47 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
     Inter_700Bold,
   });
 
+  React.useEffect(() => {
+    // Subtle glow animation for premium users
+    if (user.isHost) {
+      profileGlow.value = withRepeat(
+        withTiming(1, { duration: 4000 }),
+        -1,
+        true
+      );
+    }
+    
+    // Subtle button pulse
+    buttonPulse.value = withRepeat(
+      withTiming(1, { duration: 3000 }),
+      -1,
+      true
+    );
+
+    // Notification bounce when there are unread notifications
+    const unreadCount = 2; // Mock unread count
+    if (unreadCount > 0) {
+      notificationBounce.value = withRepeat(
+        withSpring(1, { damping: 8 }),
+        -1,
+        true
+      );
+    }
+  }, [user.isHost]);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
     setUser(prev => ({ ...prev, isFollowing: !isFollowing }));
+  };
+
+  const handleEditProfile = () => {
+    Alert.alert('Edit Profile', 'Profile editing functionality would open here');
   };
 
   const handleMessages = () => {
@@ -115,17 +168,6 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
     router.push('/host-registration');
   };
 
-  const handleTabPress = (tab: MediaTab) => {
-    setActiveTab(tab);
-  };
-
-  const handleStatsPress = (type: 'posts' | 'followers' | 'following') => {
-    Alert.alert(
-      type.charAt(0).toUpperCase() + type.slice(1),
-      `Show ${type} list functionality would be implemented here`
-    );
-  };
-
   // Don't render if no user data
   if (!user || !currentUser) {
     return (
@@ -134,6 +176,88 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
       </View>
     );
   }
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 150, 300],
+      [0, 0.7, 1],
+      'clamp'
+    );
+    
+    return {
+      opacity,
+    };
+  });
+
+  const profileImageAnimatedStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      scrollY.value,
+      [0, 200, 400],
+      [1, 0.75, 0.5],
+      'clamp'
+    );
+    
+    const translateY = interpolate(
+      scrollY.value,
+      [0, 200, 400],
+      [0, -30, -60],
+      'clamp'
+    );
+    
+    const glowOpacity = user.isHost ? interpolate(profileGlow.value, [0, 1], [0.3, 0.7]) : 0;
+    
+    return {
+      transform: [{ scale }, { translateY }],
+      shadowOpacity: glowOpacity,
+      shadowRadius: interpolate(profileGlow.value, [0, 1], [10, 20]),
+    };
+  });
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: interpolate(buttonPulse.value, [0, 1], [1, 1.01]) }
+      ],
+      shadowOpacity: interpolate(buttonPulse.value, [0, 1], [0.2, 0.4]),
+    };
+  });
+
+  const coverAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: coverFade.value,
+    };
+  });
+
+  const miniHeaderStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [250, 300],
+      [50, 0],
+      'clamp'
+    );
+    
+    const opacity = interpolate(
+      scrollY.value,
+      [250, 300],
+      [0, 1],
+      'clamp'
+    );
+    
+    return {
+      transform: [{ translateY }],
+      opacity,
+    };
+  });
+
+  const notificationAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: interpolate(notificationBounce.value, [0, 1], [1, 1.1]) }
+      ],
+    };
+  });
 
   const hostButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: hostButtonScale.value }],
@@ -148,7 +272,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
         <Image source={{ uri: item.image }} style={styles.gridImage} />
       ) : (
         <LinearGradient
-          colors={['rgba(108, 92, 231, 0.2)', 'rgba(108, 92, 231, 0.1)']}
+          colors={['rgba(108, 92, 231, 0.15)', 'rgba(108, 92, 231, 0.05)']}
           style={styles.gridPlaceholder}
         >
           <Text style={styles.gridPlaceholderText} numberOfLines={3}>
@@ -163,58 +287,6 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
       </View>
     </TouchableOpacity>
   );
-
-  const renderMediaContent = () => {
-    switch (activeTab) {
-      case 'posts':
-        return userPosts.length > 0 ? (
-          <FlatList
-            data={userPosts}
-            renderItem={renderPost}
-            numColumns={3}
-            scrollEnabled={false}
-            contentContainerStyle={styles.postsGrid}
-            columnWrapperStyle={styles.row}
-          />
-        ) : (
-          <View style={styles.emptyState}>
-            <Grid size={48} color="#666666" />
-            <Text style={[styles.emptyText, { fontFamily: 'Inter_600SemiBold' }]}>
-              No posts yet
-            </Text>
-            <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
-              {isCurrentUser ? 'Share your first post' : `${user?.username || 'User'} hasn't posted yet`}
-            </Text>
-          </View>
-        );
-      case 'reels':
-        return (
-          <View style={styles.emptyState}>
-            <Play size={48} color="#666666" />
-            <Text style={[styles.emptyText, { fontFamily: 'Inter_600SemiBold' }]}>
-              No reels yet
-            </Text>
-            <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
-              {isCurrentUser ? 'Create your first reel' : `${user?.username || 'User'} hasn't shared any reels`}
-            </Text>
-          </View>
-        );
-      case 'saved':
-        return (
-          <View style={styles.emptyState}>
-            <Bookmark size={48} color="#666666" />
-            <Text style={[styles.emptyText, { fontFamily: 'Inter_600SemiBold' }]}>
-              No saved posts
-            </Text>
-            <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
-              {isCurrentUser ? 'Posts you save will appear here' : 'Private collection'}
-            </Text>
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
 
   const renderFlags = (rating: number) => {
     const flagColors = ['#FF4B4B', '#FF914D', '#FFC107', '#A3D977', '#4CAF50'];
@@ -248,197 +320,208 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { fontFamily: 'Inter_700Bold' }]}>
-            {isCurrentUser ? 'Profile' : user?.username}
-          </Text>
-        </View>
-        <View style={styles.headerRight}>
-          {!isCurrentUser && (
-            <TouchableOpacity onPress={handleMessages} style={styles.messageIconButton}>
-              <MessageCircle size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+    <View style={styles.container}>
+      {/* Charcoal Background */}
+      <View style={styles.background} />
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          {/* Profile Image */}
-          <View style={styles.profileImageContainer}>
-            <View style={styles.profileImageWrapper}>
-              <Image 
-                source={{ uri: user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} 
-                style={styles.profileImage} 
+      {/* Refined Sticky Mini Header */}
+      <Animated.View style={[styles.stickyHeader, headerAnimatedStyle, miniHeaderStyle]}>
+        <BlurView intensity={40} style={styles.blurHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={[styles.miniHeaderTitle, { fontFamily: 'Inter_600SemiBold' }]}>
+            {user?.username || 'Profile'}
+          </Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={handleMessages} style={styles.headerIcon}>
+              <MessageCircle size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </BlurView>
+      </Animated.View>
+
+      <Animated.ScrollView
+        ref={scrollViewRef}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+      >
+        {/* Professional Cover Section */}
+        <View style={styles.coverContainer}>
+          <Animated.View style={coverAnimatedStyle}>
+            <ImageBackground
+              source={{ uri: coverImage }}
+              style={styles.coverImage}
+              blurRadius={1}
+            >
+              <LinearGradient
+                colors={['transparent', 'rgba(30, 30, 30, 0.8)']}
+                style={styles.coverGradient}
               />
+            </ImageBackground>
+          </Animated.View>
+        </View>
+
+        {/* Clean Profile Section */}
+        <View style={styles.profileSection}>
+          {/* Professional Profile Image */}
+          <Animated.View style={[styles.profileImageContainer, profileImageAnimatedStyle]}>
+            <View style={styles.profileImageWrapper}>
+              <Image source={{ uri: user?.avatar || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }} style={styles.profileImage} />
               {user?.isHost && (
                 <View style={styles.crownBadge}>
                   <Crown size={18} color="#6C5CE7" fill="#6C5CE7" />
                 </View>
               )}
-              {user?.isHost && <View style={styles.glowRing} />}
+              {user?.isHost && <View style={styles.premiumGlow} />}
+            </View>
+          </Animated.View>
+
+          {/* Clean Typography */}
+          <View style={styles.userInfo}>
+            <Text style={[styles.username, fontsLoaded ? { fontFamily: 'Inter_700Bold' } : {}]}>
+              {user?.username ?? 'Guest User'}
+            </Text>
+            
+            <View style={styles.locationContainer}>
+              <MapPin size={16} color="#B0B0B0" />
+              <Text style={[styles.locationText, fontsLoaded ? { fontFamily: 'Inter_400Regular' } : {}]}>
+                {user?.location ?? 'Unknown Location'}
+              </Text>
+              <Text style={[styles.ageText, fontsLoaded ? { fontFamily: 'Inter_400Regular' } : {}]}>
+                {user?.age ? ` • ${user.age}` : ''}
+              </Text>
+            </View>
+            
+            <Text style={[styles.bio, fontsLoaded ? { fontFamily: 'Inter_400Regular' } : {}]}>
+              {user?.bio ?? 'No bio available'}
+            </Text>
+          </View>
+
+          {/* Professional Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, styles.statPosts, { fontFamily: 'Inter_700Bold' }]}>
+                {userPosts.length}
+              </Text>
+              <Text style={[styles.statLabel, { fontFamily: 'Inter_400Regular' }]}>Posts</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, styles.statFollowers, { fontFamily: 'Inter_700Bold' }]}>
+                17.8K
+              </Text>
+              <Text style={[styles.statLabel, { fontFamily: 'Inter_400Regular' }]}>Followers</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, styles.statFollowing, { fontFamily: 'Inter_700Bold' }]}>
+                856
+              </Text>
+              <Text style={[styles.statLabel, { fontFamily: 'Inter_400Regular' }]}>Following</Text>
             </View>
           </View>
 
-          {/* User Info */}
-          <Text style={[styles.username, { fontFamily: 'Inter_700Bold' }]}>
-            {user?.username ?? 'Guest User'}
-          </Text>
-          
-          <View style={styles.locationRow}>
-            <MapPin size={16} color="#C5C5C5" />
-            <Text style={[styles.locationText, { fontFamily: 'Inter_400Regular' }]}>
-              {user?.location ?? 'Unknown Location'}
-            </Text>
-            {user?.age && (
-              <Text style={[styles.ageText, { fontFamily: 'Inter_400Regular' }]}>
-                • {user.age}
+          {/* Community Trust Score */}
+          {user?.isHost && (
+            <View style={styles.trustSection}>
+              {renderFlags(4.2)}
+              <Text style={[styles.trustLabel, { fontFamily: 'Inter_500Medium' }]}>
+                Community Trust Score
               </Text>
-            )}
-          </View>
-          
-          <Text style={[styles.bio, { fontFamily: 'Inter_400Regular' }]} numberOfLines={1}>
-            {user?.bio ?? 'No bio available'}
-          </Text>
-        </View>
+            </View>
+          )}
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statButton} onPress={() => handleStatsPress('posts')}>
-            <Text style={[styles.statNumber, { fontFamily: 'Inter_700Bold' }]}>
-              {userPosts.length}
-            </Text>
-            <Text style={[styles.statLabel, { fontFamily: 'Inter_400Regular' }]}>Posts</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.statButton} onPress={() => handleStatsPress('followers')}>
-            <Text style={[styles.statNumber, { fontFamily: 'Inter_700Bold' }]}>
-              17.8K
-            </Text>
-            <Text style={[styles.statLabel, { fontFamily: 'Inter_400Regular' }]}>Followers</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.statButton} onPress={() => handleStatsPress('following')}>
-            <Text style={[styles.statNumber, { fontFamily: 'Inter_700Bold' }]}>
-              856
-            </Text>
-            <Text style={[styles.statLabel, { fontFamily: 'Inter_400Regular' }]}>Following</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Trust Score for Hosts */}
-        {user?.isHost && (
-          <View style={styles.trustSection}>
-            {renderFlags(4.2)}
-            <Text style={[styles.trustLabel, { fontFamily: 'Inter_500Medium' }]}>
-              Community Trust Score
-            </Text>
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.actionSection}>
-          {isCurrentUser ? (
-            // Register as Host button for non-hosts
-            !user?.isHost && (
-              <Animated.View style={[styles.hostButton, hostButtonAnimatedStyle]}>
-                <TouchableOpacity onPress={handleRegisterAsHost}>
-                  <LinearGradient
-                    colors={['#6C5CE7', '#5A4FCF']}
-                    style={styles.hostButtonGradient}
+          {/* Clean Action Buttons */}
+          <View style={styles.actionButtons}>
+            {isCurrentUser ? (
+              <>
+                {/* Register as Host Button (if not already a host) */}
+                {!user?.isHost && (
+                  <Animated.View
+                    style={[styles.hostButton, hostButtonAnimatedStyle]}
                   >
-                    <Crown size={18} color="#FFFFFF" />
-                    <Text style={[styles.hostButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                      Register as Host
+                    <TouchableOpacity onPress={handleRegisterAsHost}>
+                      <LinearGradient
+                        colors={['#6C5CE7', '#5A4FCF']}
+                        style={styles.hostButtonGradient}
+                      >
+                        <Crown size={18} color="#FFFFFF" />
+                        <Text style={[styles.hostButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
+                          Register as Host
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+              </>
+            ) : (
+              <View style={styles.socialButtons}>
+                <TouchableOpacity 
+                  style={[styles.followButton, isFollowing && styles.followingButton]} 
+                  onPress={handleFollow}
+                >
+                  <LinearGradient
+                    colors={isFollowing ? ['#666666', '#555555'] : ['#6C5CE7', '#5A4FCF']}
+                    style={styles.followButtonGradient}
+                  >
+                    {isFollowing ? (
+                      <UserCheck size={18} color="#FFFFFF" />
+                    ) : (
+                      <UserPlus size={18} color="#FFFFFF" />
+                    )}
+                    <Text style={[styles.followButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
+                      {isFollowing ? 'Following' : 'Follow'}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
-              </Animated.View>
-            )
+                
+                <TouchableOpacity style={styles.messageButton} onPress={handleMessages}>
+                  <BlurView intensity={30} style={styles.messageButtonBlur}>
+                    <MessageCircle size={18} color="#FFFFFF" />
+                    <Text style={[styles.messageButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
+                      Message
+                    </Text>
+                  </BlurView>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Professional Bulletin Board */}
+        <BulletinBoardSection isCurrentUser={isCurrentUser} />
+
+        {/* Clean Posts Grid */}
+        <View style={styles.postsSection}>
+          <View style={styles.postsHeader}>
+            <Grid size={22} color="#FFFFFF" />
+            <Text style={[styles.postsHeaderText, { fontFamily: 'Inter_600SemiBold' }]}>
+              Posts
+            </Text>
+          </View>
+
+          {userPosts.length > 0 ? (
+            <FlatList
+              data={userPosts}
+              renderItem={renderPost}
+              numColumns={3}
+              scrollEnabled={false}
+              contentContainerStyle={styles.postsGrid}
+              columnWrapperStyle={styles.row}
+            />
           ) : (
-            // Follow/Message buttons for other users
-            <View style={styles.socialButtons}>
-              <TouchableOpacity 
-                style={[styles.followButton, isFollowing && styles.followingButton]} 
-                onPress={handleFollow}
-              >
-                <LinearGradient
-                  colors={isFollowing ? ['#666666', '#555555'] : ['#6C5CE7', '#5A4FCF']}
-                  style={styles.followButtonGradient}
-                >
-                  <UserPlus size={18} color="#FFFFFF" />
-                  <Text style={[styles.followButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.messageButton} onPress={handleMessages}>
-                <MessageCircle size={18} color="#6C5CE7" />
-                <Text style={[styles.messageButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                  Message
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyText, { fontFamily: 'Inter_600SemiBold' }]}>
+                No posts yet
+              </Text>
+              <Text style={[styles.emptySubtext, { fontFamily: 'Inter_400Regular' }]}>
+                {isCurrentUser ? 'Share your creative work' : `${user?.username || 'User'} hasn't posted yet`}
+              </Text>
             </View>
           )}
         </View>
-
-        {/* Media Tabs */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
-            onPress={() => handleTabPress('posts')}
-          >
-            <Grid size={20} color={activeTab === 'posts' ? '#6C5CE7' : '#999999'} />
-            <Text style={[
-              styles.tabText,
-              { fontFamily: 'Inter_500Medium' },
-              activeTab === 'posts' && styles.activeTabText
-            ]}>
-              Posts
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'reels' && styles.activeTab]}
-            onPress={() => handleTabPress('reels')}
-          >
-            <Play size={20} color={activeTab === 'reels' ? '#6C5CE7' : '#999999'} />
-            <Text style={[
-              styles.tabText,
-              { fontFamily: 'Inter_500Medium' },
-              activeTab === 'reels' && styles.activeTabText
-            ]}>
-              Reels
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'saved' && styles.activeTab]}
-            onPress={() => handleTabPress('saved')}
-          >
-            <Bookmark size={20} color={activeTab === 'saved' ? '#6C5CE7' : '#999999'} />
-            <Text style={[
-              styles.tabText,
-              { fontFamily: 'Inter_500Medium' },
-              activeTab === 'saved' && styles.activeTabText
-            ]}>
-              Saved
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Media Content */}
-        <View style={styles.mediaContent}>
-          {renderMediaContent()}
-        </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Full Screen Post Viewer */}
       <FullScreenPostViewer
@@ -449,14 +532,21 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
         onLike={handleLike}
         onComment={handleComment}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+  },
+  background: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#1E1E1E', // Charcoal background
   },
   loadingContainer: {
     flex: 1,
@@ -468,43 +558,104 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
   },
-  header: {
+  stickyHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HEADER_HEIGHT,
+    zIndex: 100,
+  },
+  blurHeader: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(108, 92, 231, 0.2)',
+    paddingTop: 40,
   },
   backButton: {
-    padding: 8,
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 24,
   },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
+  miniHeaderTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   headerRight: {
-    width: 40,
+    flexDirection: 'row',
+    gap: 16,
   },
-  messageIconButton: {
-    padding: 8,
+  headerIcon: {
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 24,
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#6C5CE7', // Royal Purple
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#1E1E1E',
+  },
+  notificationText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
+    zIndex: 10,
+  },
+  coverContainer: {
+    height: 220,
+    marginBottom: -70,
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  coverGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  coverEditButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  coverEditBlur: {
+    padding: 14,
   },
   profileSection: {
     alignItems: 'center',
-    paddingTop: 32,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    zIndex: 20,
   },
   profileImageContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    elevation: 8,
   },
   profileImageWrapper: {
     position: 'relative',
@@ -513,80 +664,92 @@ const styles = StyleSheet.create({
     width: PROFILE_IMAGE_SIZE,
     height: PROFILE_IMAGE_SIZE,
     borderRadius: 60,
-  },
-  glowRing: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    width: PROFILE_IMAGE_SIZE + 8,
-    height: PROFILE_IMAGE_SIZE + 8,
-    borderRadius: 64,
     borderWidth: 3,
+    borderColor: '#3A3A3A',
+  },
+  premiumGlow: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    width: PROFILE_IMAGE_SIZE + 4,
+    height: PROFILE_IMAGE_SIZE + 4,
+    borderRadius: 62,
+    borderWidth: 2,
     borderColor: '#6C5CE7',
-    opacity: 0.8,
+    opacity: 0.6,
   },
   crownBadge: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
+    top: -10,
+    right: -10,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 22,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#6C5CE7',
   },
+  userInfo: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
   username: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
-  locationRow: {
+  locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    justifyContent: 'center',
+    marginBottom: 16,
   },
   locationText: {
-    fontSize: 15,
-    color: '#C5C5C5',
+    fontSize: 16,
+    color: '#B0B0B0',
     marginLeft: 6,
   },
   ageText: {
-    fontSize: 15,
-    color: '#C5C5C5',
-    marginLeft: 4,
+    fontSize: 16,
+    color: '#B0B0B0',
   },
   bio: {
-    fontSize: 15,
-    color: '#C5C5C5',
+    fontSize: 16,
+    color: '#D1D5DB',
     textAlign: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    lineHeight: 24,
+    opacity: 0.9,
   },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 60,
-    marginBottom: 24,
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 32,
   },
-  statButton: {
+  statItem: {
     alignItems: 'center',
-    padding: 8,
   },
   statNumber: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+  },
+  statPosts: {
+    color: '#6C5CE7', // Royal Purple
+  },
+  statFollowers: {
+    color: '#FFD700', // Gold
+  },
+  statFollowing: {
+    color: '#C0C0C0', // Silver
   },
   statLabel: {
-    fontSize: 13,
-    color: '#999999',
+    fontSize: 14,
+    color: '#B0B0B0',
     marginTop: 4,
+    fontWeight: '400',
   },
   trustSection: {
     alignItems: 'center',
@@ -603,25 +766,58 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   trustLabel: {
     fontSize: 14,
-    color: '#999999',
+    color: '#B0B0B0',
     fontWeight: '500',
   },
-  actionSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
+  actionButtons: {
+    width: '100%',
+  },
+  editButton: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+    marginBottom: 16,
+  },
+  editButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    gap: 10,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
   },
   hostButton: {
     borderRadius: 24,
     overflow: 'hidden',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   hostButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
+    paddingHorizontal: 32,
     gap: 10,
   },
   hostButtonText: {
@@ -638,6 +834,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
   },
+  followingButton: {
+    opacity: 0.8,
+  },
   followButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -652,10 +851,10 @@ const styles = StyleSheet.create({
   },
   messageButton: {
     flex: 1,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#6C5CE7',
-    backgroundColor: 'rgba(108, 92, 231, 0.1)',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  messageButtonBlur: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -663,55 +862,47 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   messageButtonText: {
-    color: '#6C5CE7',
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-    marginBottom: 20,
+  postsSection: {
+    marginTop: 32,
     paddingHorizontal: 24,
   },
-  tab: {
-    flex: 1,
+  postsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    marginBottom: 24,
   },
-  activeTab: {
-    borderBottomColor: '#6C5CE7',
-  },
-  tabText: {
-    fontSize: 14,
-    color: '#999999',
-    marginLeft: 8,
-  },
-  activeTabText: {
-    color: '#6C5CE7',
-  },
-  mediaContent: {
-    flex: 1,
-    paddingHorizontal: 20,
+  postsHeaderText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 12,
   },
   postsGrid: {
-    paddingBottom: 20,
+    paddingBottom: 32,
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   gridItem: {
     width: imageSize,
     height: imageSize,
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#333333',
+    backgroundColor: '#2A2A2A',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#3A3A3A',
   },
   gridImage: {
     width: '100%',
@@ -723,45 +914,45 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 8,
+    padding: 12,
   },
   gridPlaceholderText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#FFFFFF',
     textAlign: 'center',
   },
   likeCountOverlay: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
+    bottom: 8,
+    right: 8,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     gap: 4,
   },
   likeCountText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#FFFFFF',
     fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingTop: 60,
+    paddingHorizontal: 24,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#FFFFFF',
     fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#999999',
+    fontSize: 16,
+    color: '#B0B0B0',
     textAlign: 'center',
   },
 });
