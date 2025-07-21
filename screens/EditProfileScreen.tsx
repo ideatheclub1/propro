@@ -272,7 +272,7 @@ export default function EditProfileScreen() {
                 label="Full Name"
                 value={formData.fullName}
                 onChangeText={(value) => handleInputChange('fullName', value)}
-                placeholder="Enter your full name"
+                placeholder="Enter your name"
                 error={errors.fullName}
                 maxLength={50}
               />
@@ -286,7 +286,7 @@ export default function EditProfileScreen() {
                 maxLength={30}
                 prefix="@"
                 autoCapitalize="none"
-                editable={true} // Can be set to false to restrict editing
+                editable={false} // Restrict username editing
               />
 
               <FormInput
@@ -315,7 +315,7 @@ export default function EditProfileScreen() {
                     label="Age"
                     value={formData.age}
                     onChangeText={(value) => handleInputChange('age', value)}
-                    placeholder="25"
+                    placeholder="Age"
                     error={errors.age}
                     keyboardType="numeric"
                     maxLength={3}

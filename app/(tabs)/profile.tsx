@@ -1,25 +1,48 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { LocationEdit as Edit3 } from 'lucide-react-native';
 import ProfileScreen from '../../screens/ProfileScreen';
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
 export default function ProfileTab() {
   const router = useRouter();
+  const scale = useSharedValue(1);
 
   const handleEditProfile = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
+    
+    scale.value = withSpring(0.9, {}, () => {
+      scale.value = withSpring(1);
+    });
+    
     router.push('/edit-profile');
   };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
     <>
       <ProfileScreen />
-      <TouchableOpacity 
-        style={styles.editFab} 
+      <AnimatedTouchableOpacity 
+        style={[styles.editFab, animatedStyle]} 
         onPress={handleEditProfile}
       >
         <Edit3 size={20} color="#FFFFFF" />
-      </TouchableOpacity>
+      </AnimatedTouchableOpacity>
     </>
   );
 }
@@ -27,7 +50,7 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   editFab: {
     position: 'absolute',
-    bottom: 100,
+    bottom: Platform.OS === 'ios' ? 120 : 100,
     right: 20,
     width: 56,
     height: 56,
@@ -35,10 +58,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#6C5CE7',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
+    elevation: 12,
     shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(108, 92, 231, 0.3)',
   },
 });

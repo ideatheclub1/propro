@@ -435,21 +435,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
           {/* Clean Action Buttons */}
           <View style={styles.actionButtons}>
             {isCurrentUser ? (
-              <View>
-                <Animated.View style={[styles.editButton, buttonAnimatedStyle]}>
-                  <TouchableOpacity onPress={handleEditProfile}>
-                    <LinearGradient
-                      colors={['#6C5CE7', '#5A4FCF']}
-                      style={styles.editButtonGradient}
-                    >
-                      <Edit3 size={18} color="#FFFFFF" />
-                      <Text style={[styles.editButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                        Edit Profile
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </Animated.View>
-                
+              <>
                 {/* Register as Host Button (if not already a host) */}
                 {!user?.isHost && (
                   <Animated.View
@@ -468,7 +454,7 @@ export default function ProfileScreen({ route }: ProfileScreenProps) {
                     </TouchableOpacity>
                   </Animated.View>
                 )}
-              </View>
+              </>
             ) : (
               <View style={styles.socialButtons}>
                 <TouchableOpacity 
