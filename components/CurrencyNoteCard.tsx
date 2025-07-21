@@ -224,11 +224,11 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   dollarBill: {
-    borderRadius: 12,
+    borderRadius: 8,
     minHeight: 160,
     position: 'relative',
     borderWidth: 2,
-    borderColor: '#00A085',
+    borderColor: '#2E7D32',
   },
   paperTexture: {
     position: 'absolute',
@@ -350,10 +350,9 @@ const styles = StyleSheet.create({
   },
   serialText: {
     fontSize: 8,
-    color: '#004D40',
+    color: '#0D4F12',
     fontWeight: 'bold',
     letterSpacing: 0.5,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   sealArea: {
     position: 'absolute',
@@ -373,11 +372,10 @@ const styles = StyleSheet.create({
   },
   sealText: {
     fontSize: 6,
-    color: '#004D40',
+    color: '#0D4F12',
     fontWeight: 'bold',
     textAlign: 'center',
     lineHeight: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   mainContent: {
     flexDirection: 'row',
@@ -422,34 +420,30 @@ const styles = StyleSheet.create({
   dollarSymbol: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#004D40',
+    color: '#0D4F12',
     marginRight: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   denomination: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#004D40',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: '#0D4F12',
   },
   achievementInfo: {
     alignItems: 'center',
   },
   achievementTitle: {
     fontSize: 10,
-    color: '#004D40',
+    color: '#0D4F12',
     fontWeight: 'bold',
     marginBottom: 4,
     letterSpacing: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   achievementDesc: {
     fontSize: 9,
-    color: '#004D40',
+    color: '#0D4F12',
     textAlign: 'center',
     lineHeight: 12,
     opacity: 0.8,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   bottomSection: {
     position: 'absolute',
@@ -460,11 +454,10 @@ const styles = StyleSheet.create({
   },
   treasuryText: {
     fontSize: 7,
-    color: '#004D40',
+    color: '#0D4F12',
     fontWeight: 'bold',
     letterSpacing: 1,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   vintagePatterns: {
     position: 'absolute',
@@ -527,8 +520,7 @@ const styles = StyleSheet.create({
   watermarkText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#004D40',
+    color: '#0D4F12',
     transform: [{ rotate: '-15deg' }],
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });

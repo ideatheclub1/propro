@@ -230,9 +230,7 @@ export const CommentProvider: React.FC<{ children: ReactNode }> = ({ children })
           const parsedComments = JSON.parse(storedComments);
           // Validate the parsed data structure
           if (parsedComments && typeof parsedComments === 'object') {
-            setTimeout(() => {
-              dispatch({ type: 'SET_COMMENTS', payload: parsedComments });
-            }, 0);
+            dispatch({ type: 'SET_COMMENTS', payload: parsedComments });
             return;
           } else {
             // Invalid data structure, use mock data
@@ -241,9 +239,7 @@ export const CommentProvider: React.FC<{ children: ReactNode }> = ({ children })
             } catch (clearError) {
               console.error('Error clearing invalid comments:', clearError);
             }
-            setTimeout(() => {
-              dispatch({ type: 'SET_COMMENTS', payload: mockComments });
-            }, 0);
+            dispatch({ type: 'SET_COMMENTS', payload: mockComments });
           }
         } catch (parseError) {
           console.error('Error parsing comments:', parseError);
@@ -253,29 +249,19 @@ export const CommentProvider: React.FC<{ children: ReactNode }> = ({ children })
           } catch (clearError) {
             console.error('Error clearing corrupt comments:', clearError);
           }
-          setTimeout(() => {
-            dispatch({ type: 'SET_COMMENTS', payload: mockComments });
-          }, 0);
+          dispatch({ type: 'SET_COMMENTS', payload: mockComments });
         }
       } else {
         // Initialize with mock data if no stored comments
-        setTimeout(() => {
-          dispatch({ type: 'SET_COMMENTS', payload: mockComments });
-        }, 0);
+        dispatch({ type: 'SET_COMMENTS', payload: mockComments });
       }
     } catch (error) {
       console.error('Error loading comments:', error);
-      setTimeout(() => {
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to load comments' });
-      }, 0);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load comments' });
       // Fallback to mock data
-      setTimeout(() => {
-        dispatch({ type: 'SET_COMMENTS', payload: mockComments });
-      }, 0);
+      dispatch({ type: 'SET_COMMENTS', payload: mockComments });
     } finally {
-      setTimeout(() => {
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }, 0);
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
