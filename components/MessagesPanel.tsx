@@ -22,7 +22,7 @@ import Animated, {
   SlideInRight,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { X, MessageCircle, Search, LocationEdit as Edit, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
+import { X, MessageCircle, Search, Plus } from 'lucide-react-native';
 import { mockConversations, mockUsers } from '../data/mockData';
 import { Conversation, User } from '../types';
 
@@ -161,7 +161,7 @@ export default function MessagesPanel({ isVisible, onClose }: MessagesPanelProps
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.headerButton} onPress={handleNewMessage}>
-            <Edit size={20} color="#FFFFFF" />
+            <Plus size={20} color="#FFFFFF" />
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.headerButton} onPress={onClose}>
