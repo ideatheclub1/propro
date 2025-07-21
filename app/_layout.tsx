@@ -28,6 +28,14 @@ export default function RootLayout() {
             />
             <Stack.Screen name="host-registration" />
             <Stack.Screen name="conversation" />
+            <Stack.Screen 
+              name="edit-profile" 
+              options={{ 
+                headerShown: false,
+                presentation: 'card',
+                gestureEnabled: true 
+              }} 
+            />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="light" backgroundColor="#1E1E1E" />
