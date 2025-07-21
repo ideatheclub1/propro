@@ -6,14 +6,19 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Image, Video, Music, Play } from 'lucide-react-native';
+import { Camera, Video, Play } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withSequence,
+  FadeIn,
+  SlideInUp,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import CameraScreen from '../../components/CameraScreen';
@@ -23,124 +28,161 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 export default function CreateScreen() {
   const router = useRouter();
   const [showCamera, setShowCamera] = React.useState(false);
+  const [cameraMode, setCameraMode] = React.useState<'photo' | 'video'>('photo');
 
-  const handleCreatePost = (type: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (type === 'Video' || type === 'Photo') {
-      setShowCamera(true);
-    } else {
-      Alert.alert('Create', `${type} creation functionality would open here`);
+  const photoButtonScale = useSharedValue(1);
+  const videoButtonScale = useSharedValue(1);
+
+  const handleTakePhoto = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.error('Haptics error:', error);
     }
+    
+    photoButtonScale.value = withSequence(
+      withSpring(0.95, { damping: 15 }),
+      withSpring(1, { damping: 15 })
+    );
+    
+    setCameraMode('photo');
+    setShowCamera(true);
+  };
+
+  const handleRecordVideo = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.error('Haptics error:', error);
+    }
+    
+    videoButtonScale.value = withSequence(
+      withSpring(0.95, { damping: 15 }),
+      withSpring(1, { damping: 15 })
+    );
+    
+    setCameraMode('video');
+    setShowCamera(true);
   };
 
   const handleCloseCamera = () => {
     setShowCamera(false);
   };
 
-  const CreateOption = ({ 
-    icon: IconComponent, 
-    title, 
-    subtitle, 
-    onPress, 
-    colors 
-  }: {
-    icon: any;
-    title: string;
-    subtitle: string;
-    onPress: () => void;
-    colors: string[];
-  }) => {
-    const scale = useSharedValue(1);
+  const photoButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: photoButtonScale.value }],
+  }));
 
-    const handlePressIn = () => {
-      scale.value = withSpring(0.95);
-    };
-
-    const handlePressOut = () => {
-      scale.value = withSpring(1);
-    };
-
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ scale: scale.value }],
-    }));
-
-    return (
-      <AnimatedTouchableOpacity
-        style={[styles.optionCard, animatedStyle]}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={onPress}
-      >
-        <LinearGradient colors={colors} style={styles.optionGradient}>
-          <View style={styles.optionIcon}>
-            <IconComponent size={32} color="#FFFFFF" strokeWidth={2} />
-          </View>
-          <Text style={styles.optionTitle}>{title}</Text>
-          <Text style={styles.optionSubtitle}>{subtitle}</Text>
-        </LinearGradient>
-      </AnimatedTouchableOpacity>
-    );
-  };
+  const videoButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: videoButtonScale.value }],
+  }));
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#1E1E1E" />
+      
       <LinearGradient
-        colors={['#1E1E1E', '#2A2A2A', '#1E1E1E']}
+        colors={['#1E1E1E', '#2A2A2A', '#121212']}
         style={styles.background}
       >
-        <View style={styles.header}>
+        {/* Header */}
+        <Animated.View 
+          style={styles.header}
+          entering={FadeIn.duration(800)}
+        >
           <Text style={styles.title}>Create</Text>
           <Text style={styles.subtitle}>Share your moment with The Club</Text>
+        </Animated.View>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonsContainer}>
+          {/* Take Photo Button */}
+          <AnimatedTouchableOpacity
+            style={[styles.actionButton, photoButtonStyle]}
+            onPress={handleTakePhoto}
+            entering={SlideInUp.delay(200).springify()}
+          >
+            <LinearGradient
+              colors={['#6C5CE7', '#EC4899']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.buttonGradient}
+            >
+              <View style={styles.buttonContent}>
+                <View style={styles.iconContainer}>
+                  <Camera size={32} color="#FFFFFF" strokeWidth={2} />
+                </View>
+                <View style={styles.buttonText}>
+                  <Text style={styles.buttonTitle}>Take Photo</Text>
+                  <Text style={styles.buttonSubtitle}>Capture a moment</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </AnimatedTouchableOpacity>
+
+          {/* Record Video Button */}
+          <AnimatedTouchableOpacity
+            style={[styles.actionButton, videoButtonStyle]}
+            onPress={handleRecordVideo}
+            entering={SlideInUp.delay(400).springify()}
+          >
+            <LinearGradient
+              colors={['#6C5CE7', '#F97316']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.buttonGradient}
+            >
+              <View style={styles.buttonContent}>
+                <View style={styles.iconContainer}>
+                  <Video size={32} color="#FFFFFF" strokeWidth={2} />
+                </View>
+                <View style={styles.buttonText}>
+                  <Text style={styles.buttonTitle}>Record Video</Text>
+                  <Text style={styles.buttonSubtitle}>Create a short video</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </AnimatedTouchableOpacity>
         </View>
 
-        <View style={styles.optionsContainer}>
-          <CreateOption
-            icon={Camera}
-            title="Take Photo"
-            subtitle="Capture a new moment"
-            onPress={() => handleCreatePost('Photo')}
-            colors={['#6C5CE7', '#8B5CF6']}
-          />
+        {/* Feature Highlights */}
+        <Animated.View 
+          style={styles.featuresContainer}
+          entering={FadeIn.delay(600)}
+        >
+          <View style={styles.featureItem}>
+            <Play size={16} color="#6C5CE7" />
+            <Text style={styles.featureText}>15-second Shorts</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <View style={styles.filterDot} />
+            <Text style={styles.featureText}>Real-time Filters</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <View style={styles.gestureIcon} />
+            <Text style={styles.featureText}>Swipe Gestures</Text>
+          </View>
+        </Animated.View>
 
-          <CreateOption
-            icon={Video}
-            title="Record Video"
-            subtitle="Create a short video"
-            onPress={() => handleCreatePost('Video')}
-            colors={['#EC4899', '#F97316']}
-          />
-
-          <CreateOption
-            icon={Image}
-            title="Upload Media"
-            subtitle="Choose from gallery"
-            onPress={() => handleCreatePost('Upload')}
-            colors={['#10B981', '#059669']}
-          />
-
-          <CreateOption
-            icon={Music}
-            title="Add Music"
-            subtitle="Create with soundtrack"
-            onPress={() => handleCreatePost('Music')}
-            colors={['#F59E0B', '#D97706']}
-          />
-
-          <CreateOption
-            icon={Play}
-            title="Create Shorts"
-            subtitle="15-second short videos"
-            onPress={() => handleCreatePost('Video')}
-            colors={['#10B981', '#059669']}
-          />
-        </View>
+        {/* Instructions */}
+        <Animated.View 
+          style={styles.instructionsContainer}
+          entering={FadeIn.delay(800)}
+        >
+          <Text style={styles.instructionsText}>
+            Swipe gestures in camera: ← → filters • ↑ Shorts mode
+          </Text>
+        </Animated.View>
       </LinearGradient>
       
       {/* Camera Screen Modal */}
-      <CameraScreen 
-        isVisible={showCamera} 
-        onClose={handleCloseCamera}
-      />
+      {showCamera && (
+        <CameraScreen 
+          isVisible={showCamera} 
+          onClose={handleCloseCamera}
+          initialMode={cameraMode}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -148,6 +190,7 @@ export default function CreateScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1E1E1E',
   },
   background: {
     flex: 1,
@@ -155,52 +198,128 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingBottom: 60,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
+    letterSpacing: -0.5,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   subtitle: {
     fontSize: 16,
-    color: '#999999',
+    color: '#C5C5C5',
     textAlign: 'center',
+    fontWeight: '400',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
-  optionsContainer: {
-    flex: 1,
+  buttonsContainer: {
     paddingHorizontal: 24,
-    gap: 16,
+    gap: 20,
+    marginBottom: 40,
   },
-  optionCard: {
-    borderRadius: 20,
+  actionButton: {
+    borderRadius: 24,
     overflow: 'hidden',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  buttonGradient: {
+    padding: 24,
+    minHeight: 100,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  optionGradient: {
-    padding: 24,
-    alignItems: 'center',
-    minHeight: 120,
-    justifyContent: 'center',
+  buttonText: {
+    flex: 1,
   },
-  optionIcon: {
-    marginBottom: 12,
-  },
-  optionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  buttonTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
-  optionSubtitle: {
+  buttonSubtitle: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '400',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  featuresContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 32,
+    marginBottom: 40,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  featureText: {
+    fontSize: 12,
+    color: '#B0B0B0',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  filterDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#6C5CE7',
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  gestureIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: '#EC4899',
+    shadowColor: '#EC4899',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  instructionsContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    marginTop: 'auto',
+    marginBottom: 40,
+  },
+  instructionsText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '400',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });

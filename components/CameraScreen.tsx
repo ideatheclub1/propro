@@ -35,6 +35,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface CameraScreenProps {
   isVisible: boolean;
   onClose: () => void;
+  initialMode?: 'photo' | 'video';
 }
 
 type CameraMode = 'Post' | 'Reel' | 'Story' | 'Shorts';
@@ -87,11 +88,11 @@ const cameraFilters = [
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
-export default function CameraScreen({ isVisible, onClose }: CameraScreenProps) {
+export default function CameraScreen({ isVisible, onClose, initialMode = 'video' }: CameraScreenProps) {
   const [facing, setFacing] = useState<CameraType>('back');
   const [flashMode, setFlashMode] = useState<FlashMode>('off');
   const [permission, requestPermission] = useCameraPermissions();
-  const [currentMode, setCurrentMode] = useState<CameraMode>('Reel');
+  const [currentMode, setCurrentMode] = useState<CameraMode>(initialMode === 'photo' ? 'Post' : 'Reel');
   const [isRecording, setIsRecording] = useState(false);
   const [selectedFilterIndex, setSelectedFilterIndex] = useState(0);
   const [showFilterName, setShowFilterName] = useState(false);
