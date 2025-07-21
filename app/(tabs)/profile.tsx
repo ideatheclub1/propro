@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Edit3 } from 'lucide-react-native';
+import { LocationEdit as Edit3 } from 'lucide-react-native';
 import ProfileScreen from '../../screens/ProfileScreen';
 
 export default function ProfileTab() {
