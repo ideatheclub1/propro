@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Image, Video, Music } from 'lucide-react-native';
+import { Camera, Image, Video, Music, Play } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -16,15 +16,25 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import CameraScreen from '../../components/CameraScreen';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function CreateScreen() {
   const router = useRouter();
+  const [showCamera, setShowCamera] = React.useState(false);
 
   const handleCreatePost = (type: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Create', `${type} creation functionality would open here`);
+    if (type === 'Video' || type === 'Photo') {
+      setShowCamera(true);
+    } else {
+      Alert.alert('Create', `${type} creation functionality would open here`);
+    }
+  };
+
+  const handleCloseCamera = () => {
+    setShowCamera(false);
   };
 
   const CreateOption = ({ 
@@ -115,8 +125,22 @@ export default function CreateScreen() {
             onPress={() => handleCreatePost('Music')}
             colors={['#F59E0B', '#D97706']}
           />
+
+          <CreateOption
+            icon={Play}
+            title="Create Shorts"
+            subtitle="15-second short videos"
+            onPress={() => handleCreatePost('Video')}
+            colors={['#10B981', '#059669']}
+          />
         </View>
       </LinearGradient>
+      
+      {/* Camera Screen Modal */}
+      <CameraScreen 
+        isVisible={showCamera} 
+        onClose={handleCloseCamera}
+      />
     </SafeAreaView>
   );
 }
